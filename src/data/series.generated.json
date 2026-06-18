@@ -1,0 +1,82 @@
+[
+  {
+    "id": "istanbul-exe",
+    "title": "istanbul.exe",
+    "accent": "#19f0c3",
+    "playlistId": "PLtWq3cmvPcpx1hZw6MF3kgnSnIikQMor3",
+    "url": "https://www.youtube.com/playlist?list=PLtWq3cmvPcpx1hZw6MF3kgnSnIikQMor3",
+    "count": 1,
+    "thumbnail": "https://i.ytimg.com/vi/-VLZ2Ihrzgo/hqdefault.jpg",
+    "updatedAt": "2026-06-14T20:13:16Z"
+  },
+  {
+    "id": "golge-orman",
+    "title": "Gölge Orman",
+    "accent": "#9b6fd0",
+    "playlistId": "PLtWq3cmvPcpwl1t-Z96p2wTu09dP2Ve4Z",
+    "url": "https://www.youtube.com/playlist?list=PLtWq3cmvPcpwl1t-Z96p2wTu09dP2Ve4Z",
+    "count": 8,
+    "thumbnail": "https://i.ytimg.com/vi/BXix3qtNgVE/hqdefault.jpg",
+    "updatedAt": "2026-06-01T16:38:37Z"
+  },
+  {
+    "id": "mukavemet",
+    "title": "Mukavemet",
+    "accent": "#b23148",
+    "playlistId": "PLtWq3cmvPcpzRPd1fTUOcKddh7fLzbM41",
+    "url": "https://www.youtube.com/playlist?list=PLtWq3cmvPcpzRPd1fTUOcKddh7fLzbM41",
+    "count": 6,
+    "thumbnail": "https://i.ytimg.com/vi/WHYJ783TxEs/hqdefault.jpg",
+    "updatedAt": "2023-10-05T14:17:38Z"
+  },
+  {
+    "id": "dongu",
+    "title": "Döngü",
+    "accent": "#5fd0a8",
+    "playlistId": "PLtWq3cmvPcpxKDGcUeWsF4c1FH8MuMmlM",
+    "url": "https://www.youtube.com/playlist?list=PLtWq3cmvPcpxKDGcUeWsF4c1FH8MuMmlM",
+    "count": 9,
+    "thumbnail": "https://i.ytimg.com/vi/zLfor9s4nG0/hqdefault.jpg",
+    "updatedAt": "2021-06-04T15:00:35Z"
+  },
+  {
+    "id": "ekinoks",
+    "title": "Ekinoks",
+    "accent": "#e8884c",
+    "playlistId": "PLtWq3cmvPcpyvZstYjX-HEhqGKKVg0Cmr",
+    "url": "https://www.youtube.com/playlist?list=PLtWq3cmvPcpyvZstYjX-HEhqGKKVg0Cmr",
+    "count": 10,
+    "thumbnail": "https://i.ytimg.com/vi/S4dUElrdaOg/hqdefault.jpg",
+    "updatedAt": "2020-12-07T12:49:26Z"
+  },
+  {
+    "id": "efruz",
+    "title": "Efruz",
+    "accent": "#6f9bd0",
+    "playlistId": "PLtWq3cmvPcpzDBVC1OuDypxvYO-CtF6Tx",
+    "url": "https://www.youtube.com/playlist?list=PLtWq3cmvPcpzDBVC1OuDypxvYO-CtF6Tx",
+    "count": 2,
+    "thumbnail": "https://i.ytimg.com/vi/xnT8N5uNTJI/hqdefault.jpg",
+    "updatedAt": "2020-10-03T19:10:20Z"
+  },
+  {
+    "id": "dungeons-konuks",
+    "title": "Dungeons & Konuks",
+    "accent": "#d0a85f",
+    "playlistId": "PLtWq3cmvPcpw7GvUiNS0zvggD8ow6o0wC",
+    "url": "https://www.youtube.com/playlist?list=PLtWq3cmvPcpw7GvUiNS0zvggD8ow6o0wC",
+    "count": 2,
+    "thumbnail": "https://i.ytimg.com/vi/BBZoNZwhP4c/hqdefault.jpg",
+    "updatedAt": "2020-02-20T19:35:01Z"
+  },
+  {
+    "id": "dragon-heist",
+    "title": "Dragon Heist",
+    "accent": "#c9a84c",
+    "playlistId": "PLtWq3cmvPcpwcrAHmyDOdESO11WMcQM1S",
+    "url": "https://www.youtube.com/playlist?list=PLtWq3cmvPcpwcrAHmyDOdESO11WMcQM1S",
+    "count": 6,
+    "thumbnail": "https://i.ytimg.com/vi/yz4mQ5HAxZA/hqdefault.jpg",
+    "updatedAt": "2019-10-03T13:17:09Z"
+  }
+]

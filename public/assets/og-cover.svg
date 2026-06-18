@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#EBE3D3"/>
+  <circle cx="980" cy="180" r="150" fill="#5A3CF0"/>
+  <circle cx="1040" cy="470" r="90" fill="#FF4D2E"/>
+  <text x="80" y="250" font-family="'Bricolage Grotesque','Arial Black',sans-serif" font-size="120" font-weight="800" fill="#17150F" letter-spacing="-4">FANTASTİK</text>
+  <text x="80" y="370" font-family="'Bricolage Grotesque','Arial Black',sans-serif" font-size="120" font-weight="800" fill="#17150F" letter-spacing="-4">PAZAR</text>
+  <text x="84" y="450" font-family="'Space Mono',monospace" font-size="28" fill="#17150F">// ZAR ATIP ROL YAPIYORUZ — HER PAZAR 17:00</text>
+</svg>
