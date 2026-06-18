@@ -11,9 +11,25 @@
  * Yeni bölüm eklemek = bu diziye yeni bir Scenario nesnesi eklemek.
  */
 
+/**
+ * Sahnenin ruh hali — atmosfer katmanlarını (sis, kıvılcım, vinyet) ve renk
+ * tonlamasını sürükler. Verilmezse "tense" varsayılır.
+ */
+export type Mood = "calm" | "tense" | "danger" | "wonder";
+
+/** oyuncunun topladığı ipucu / eşya — günlük defterine ve sonuç kartına işlenir */
+export type Clue = { kind: "clue" | "item"; label: string; note?: string };
+
+/**
+ * Sahneyle uyumlu çizim. `scene` beat'inde → o sahne boyunca tam ekran backdrop
+ * (yavaş zoom). `narration` beat'inde → balonun üstünde çizgi-roman karesi paneli.
+ * Verilmezse prosedürel atmosfer devreye girer; görsel kısmi olsa da site bozulmaz.
+ */
+export type SceneArt = { src: string; alt: string };
+
 export type Beat =
-  | { kind: "scene"; title: string; subtitle?: string }
-  | { kind: "narration"; text: string }
+  | { kind: "scene"; title: string; subtitle?: string; mood?: Mood; art?: SceneArt }
+  | { kind: "narration"; text: string; gain?: Clue; art?: SceneArt }
   | { kind: "line"; who: string; text: string }
   | {
       kind: "choice";
@@ -49,6 +65,8 @@ export interface Scenario {
   episode: number;
   title: string;
   demo?: boolean;
+  /** taban atmosfer paleti — verilmezse seriesId'den türetilir (orman/cyber) */
+  ambiance?: "forest" | "cyber";
   characters: PlayCharacter[];
   beats: Beat[];
 }
@@ -67,7 +85,7 @@ export const scenarios: Scenario[] = [
       { id: "ozge", name: "Özge'nin Karakteri", player: "Özge Özel", role: "Büyücü", face: "🧙" },
     ],
     beats: [
-      { kind: "scene", title: "Gölge Orman'ın eşiği", subtitle: "Gün batımı" },
+      { kind: "scene", title: "Gölge Orman'ın eşiği", subtitle: "Gün batımı", mood: "wonder" },
       {
         kind: "narration",
         text: "Ağaçların arasından sızan son ışık da çekiliyor. Önünüzde, sisin yuttuğu dar bir patika ve üzerinde eski runeler kazılı yıkık bir taş kemer var.",
@@ -90,6 +108,11 @@ export const scenarios: Scenario[] = [
       {
         kind: "narration",
         text: "Işık, kemerin altındaki şeye değiyor: paslı bir zırhın içinde, gözleri sönmüş bir nöbetçi. Ve yavaşça başını sana çeviriyor.",
+        gain: {
+          kind: "clue",
+          label: "Sönmüş Nöbetçi",
+          note: "Taş kemerin altında, paslı zırhlı, runelerle mühürlü eski bir muhafız",
+        },
       },
       {
         kind: "roll",
@@ -104,7 +127,7 @@ export const scenarios: Scenario[] = [
         kind: "narration",
         text: "Kemerin ardında orman bambaşka: ağaçlar daha yaşlı, hava daha ağır. Gölge Orman sizi içine aldı. İlk bölümün eşiğini geçtiniz.",
       },
-      { kind: "scene", title: "Bölüm 1 — Son", subtitle: "Demo burada bitiyor" },
+      { kind: "scene", title: "Bölüm 1 — Son", subtitle: "Demo burada bitiyor", mood: "calm" },
     ],
   },
 
@@ -123,7 +146,16 @@ export const scenarios: Scenario[] = [
       { id: "selim", name: "Selim", player: "Soykan Söner", role: "Parker'ın Avukatı", face: "👔", npc: true },
     ],
     beats: [
-      { kind: "scene", title: "istanbul.exe", subtitle: "1. Kısım · Cyberpunk İstanbul · Sabah" },
+      {
+        kind: "scene",
+        title: "istanbul.exe",
+        subtitle: "1. Kısım · Cyberpunk İstanbul · Sabah",
+        mood: "tense",
+        art: {
+          src: "/assets/scenes/istanbul-open.webp",
+          alt: "Cyberpunk İstanbul: cami kubbesi ve minareler, arkada neon gökdelenler, Boğaz köprüsü ve vapur",
+        },
+      },
       {
         kind: "narration",
         text: "Soykan masaya 20'lik zarı koyuyor: 'Ben ne gördüğünüzü, ne duyduğunuzu, ne kokladığınızı anlatırım; siz ne yapmak istediğinizi söylersiniz. Anlaşamazsak zar atarız.' Bugün hayal gücünde kalmış bir İstanbul'dayız — cyberpunk bir evren.",
@@ -158,7 +190,16 @@ export const scenarios: Scenario[] = [
         text: "'Artık işleyen bir sistemin parçasısın.' Kapıyı geçtikten sonra şehir ışıldamaya başlıyor: gökyüzüne bile sirayet eden o pembe, o mavi neon. Yıllardır gününüzün yarısını bu tarafta geçirdiğiniz için iş heyecanı ve gün başlıyor.",
       },
 
-      { kind: "scene", title: "Realite Plaza", subtitle: "9. Kat · Rüya Departmanı" },
+      {
+        kind: "scene",
+        title: "Realite Plaza",
+        subtitle: "9. Kat · Rüya Departmanı",
+        mood: "wonder",
+        art: {
+          src: "/assets/scenes/realite-plaza.webp",
+          alt: "Loş rüya-tekno ofis: parlayan rüya kapsülleri, panoramik pencerede cyberpunk İstanbul silueti",
+        },
+      },
       {
         kind: "narration",
         text: "Maslak'ta, şirketlerin merkezinde 50 katlı bir plaza. Girişte 'Hissetmenin Ağırlığından Kurtul' afişi — şirketin kendi reklamı — sizi karşılıyor. Resepsiyondaki o üçlü kafa selamı verip RFID parmaklarınızla giriş yapmanızı bekliyor. 9. kata, rüya departmanına çıkıyorsunuz: bomboş bir kat, çalışan az, çoğu sahada; 24 saat açık. Koridorun sonunda Marek odasında bekliyor. Gözleri yine mor.",
@@ -196,7 +237,16 @@ export const scenarios: Scenario[] = [
         ],
       },
 
-      { kind: "scene", title: "Cihangir", subtitle: "Parker'ın Evi" },
+      {
+        kind: "scene",
+        title: "Cihangir",
+        subtitle: "Parker'ın Evi",
+        mood: "danger",
+        art: {
+          src: "/assets/scenes/cihangir.webp",
+          alt: "Cihangir'de loş, eski bir daire; yağmurlu pencerede kızıl bir parıltı, dışarıda neon şehir",
+        },
+      },
       {
         kind: "narration",
         text: "Eski bir Çin mahallesi; arka sokaklardan birinde, binanın altındaki neon ışıklı dükkân yüzünden cıvıl cıvıl. Tek tip sentetik hamburgerler; insanlar parmaklarını gösterip 'dıt' sesinden sonra sandviçlerini alıp gidiyor, kapısında sıra var. Asansör burada nadir — döner bir merdivenle dört katlı eski bir Beyoğlu binasının tepesine çıkıyorsunuz. Kapının ardından, zincirin aralığından size bakan yaşlıca bir çift göz.",
@@ -224,6 +274,11 @@ export const scenarios: Scenario[] = [
       {
         kind: "narration",
         text: "İlk ipucu elinizde: iki hafta önce, bir pazar. Parker anlatıyor — çocukken rüyalarını dışarıdan izlermiş; o sıralar ailesiyle Amerika'daymışlar. İlk implantını annesi seçtirmiş, güzel bir gündü. Bir de 45 yıl 'otonom hayatta kalma' implantıyla, otomatik pilotta, hiçbir şey düşünmeden yaşamış; sonra kapattırmışlar. Yorgun, aidiyetsiz bir adam — Rosie bir 'demo rüya' fırsatı seziyor.",
+        gain: {
+          kind: "clue",
+          label: "Parker'ın geçmişi",
+          note: "Bir pazar uyuyamadı · 45 yıl otonom implant · annesiyle Amerika · 'demo rüya' fırsatı",
+        },
       },
       { kind: "line", who: "ozge", text: "Sorumluluk almadığınız o eski, hafif yıllara dair ücretsiz bir 'demo rüya' yazsak — annenizin yanında olduğunuz günlerden. Ne yapıyor olmak isterdiniz?" },
       { kind: "line", who: "parker", text: "Engin bir denizin ortasında olmak isterdim. Ucu bucağı görünmesin; bu balçık boğazın suyundan bıktım. Küçük bir tekne, dümeninde ben olayım — baş kaptan da olmasın, ben kullanayım. Ve yanımda annem olsun." },
@@ -240,7 +295,7 @@ export const scenarios: Scenario[] = [
         kind: "narration",
         text: "Demo için sözleşiliyor: yarın akşam vardiyasından önce, hava kararmadan 5'e kadar gelinecek; Parker'ın bir film gözlüğü var, iş görür. Notlar alınıyor, kibarca ayrılıyorsunuz. Tahir ve Leo'yla arabaya iniyorsunuz; saat ilerledi. Sıra günün en riskli isminde: Beşiktaş sınırında, 24 yaşında, 71 risk puanlı Melis.",
       },
-      { kind: "scene", title: "1. Kısım — Son", subtitle: "Parker'ın demosu yarına. Sırada Melis var → 2. Kısım." },
+      { kind: "scene", title: "1. Kısım — Son", subtitle: "Parker'ın demosu yarına. Sırada Melis var → 2. Kısım.", mood: "calm" },
     ],
   },
 
@@ -257,7 +312,16 @@ export const scenarios: Scenario[] = [
       { id: "melis", name: "Melis", player: "Soykan Söner", role: "Sibernetik · 24", face: "🦾", npc: true },
     ],
     beats: [
-      { kind: "scene", title: "Arabada", subtitle: "2. Kısım · Beşiktaş'a Doğru" },
+      {
+        kind: "scene",
+        title: "Arabada",
+        subtitle: "2. Kısım · Beşiktaş'a Doğru",
+        mood: "tense",
+        art: {
+          src: "/assets/scenes/araba.webp",
+          alt: "Eski bir aracın ön camından yağmurlu neon İstanbul caddesi; ışık izleri, ıslak asfalt",
+        },
+      },
       {
         kind: "narration",
         text: "Parker'ın evinden çıkıp arabaya biniyorsunuz; Beşiktaş'a doğru yola koyuluyorsunuz. Tahir tablete aldığı notları Leo'ya devrediyor: 'Her şeyi benim not ettiğim kelimelerle, sıfatlarla kodla. Bir kelimeyi sıfırdan bire indirip kuru kuru geçme — insan gibi, betimleye betimleye yaz. Ben pazarlamacıyım, sen de işçilik yap.' Leo kulaklığını takıyor; ama araba sallanıyor, herkes bağırıp duruyor.",
@@ -278,7 +342,16 @@ export const scenarios: Scenario[] = [
         text: "Detaylar yığılıyor: gün batımı annenin yüzüne usulca vursun, Parker annesinin kucağına uzansın, çamaşır yumuşatıcısının o ev kokusu sinsin... Bir de zorunlu Zotek reklamı var — şirket koşulu — ama göze sokmadan: tam anneyi net görmeden önce, tabağın kenarında ufak bir logo gibi, 14 saniye yedirilecek. Ve sonu: Parker tam konuşacakken, en güzel yerde uyandır. 'Devamı için belki abone olursun.' Cliffhanger ustası Tahir bu finali çok seviyor.",
       },
 
-      { kind: "scene", title: "Beşiktaş Sahili", subtitle: "Yeni İstanbul · Melis'in Binası" },
+      {
+        kind: "scene",
+        title: "Beşiktaş Sahili",
+        subtitle: "Yeni İstanbul · Melis'in Binası",
+        mood: "wonder",
+        art: {
+          src: "/assets/scenes/besiktas.webp",
+          alt: "Sisli, balçık rengi Beşiktaş sahili; yarı batık binalar, tekneler, uzakta minare silueti",
+        },
+      },
       {
         kind: "narration",
         text: "Dolmabahçe'yi geçip sahile iniyorsunuz: kaçakçıların, tüccarların, kara borsanın uğrağı bir semt. Deniz balçıklaşmış, asit yağmurlarıyla zehirlenmiş, üstünde dev kargo gemileri demirli. Sokaklar bomboş ve sessiz — burada gün, sizin saatlerinizde başlamıyor; bu mahalle geceleri uyanıyor. Belirtilen binanın önündesiniz; Melis ikinci katta.",
@@ -296,7 +369,16 @@ export const scenarios: Scenario[] = [
       },
       { kind: "line", who: "okan", text: "Jammer varsa içeri sen gelmiyorsun Leo, dışarıda kal. Belki kız koymadı, komşu koydu — bize 'Realite'den geldik' dedirtmeden hayır der. Rosie kapıyı çalsın, kayıt açık, ben idare ederim. Sen fırsat bulursan iz bırakmadan, ghost gibi sız." },
 
-      { kind: "scene", title: "İkinci Kat", subtitle: "Melis" },
+      {
+        kind: "scene",
+        title: "İkinci Kat",
+        subtitle: "Melis",
+        mood: "danger",
+        art: {
+          src: "/assets/scenes/melis.webp",
+          alt: "Çürümüş, karanlık bir apartman koridorunda kilitleri açık, aralık duran ağır bir kapı; loş kızıl ışık sızıyor",
+        },
+      },
       {
         kind: "narration",
         text: "Apartman giriş kapısı açık; ikinci kata çıkıyorsunuz. Rosie kapıyı çalıyor. İçeriden önce sert bir 'İstemiyorum, sağ olun' geliyor. Sonra kapı yarım aralanıyor, art arda kilit sesleri ve aralıktan dışarı uzanan tek bir şey: kaba, derisiz, kara-gri, eklemleri açıkta bir biyonik kol. O kolun ucundaki metal elde bir bardak su, size uzatılıyor.",
@@ -372,8 +454,13 @@ export const scenarios: Scenario[] = [
       {
         kind: "narration",
         text: "Rüyadaki araba siz misiniz? Kabusun tam ortasında neden Realite var? Galata'nın anomalisi, kapalı çarşıdaki o amca, '17B Katip Kitapları'... ipler çoğalıyor, düğüm büyüyor. İşte İstanbul.exe senaryosunun ilk bölümünün sonuna geldiniz. Haftaya ikinci bölümde görüşmek üzere — senaryoyu bizimle birlikte ilerletin.",
+        gain: {
+          kind: "clue",
+          label: "17B · Katip Kitapları",
+          note: "Melis'in günlüğünden: kapalı çarşıda bir amca · 'geceler de satılır' · 2. bölümün ipucu",
+        },
       },
-      { kind: "scene", title: "Bölüm 1 — Son", subtitle: "İpucu: 17B · Katip Kitapları. Devamı haftaya." },
+      { kind: "scene", title: "Bölüm 1 — Son", subtitle: "İpucu: 17B · Katip Kitapları. Devamı haftaya.", mood: "calm" },
     ],
   },
 ];
