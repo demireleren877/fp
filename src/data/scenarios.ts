@@ -55,6 +55,8 @@ export interface PlayCharacter {
   role?: string;
   /** eğlenceli konuşmacı yüzü (emoji) — yoksa role'den türetilir */
   face?: string;
+  /** AI portre görseli (varsa emoji yerine gösterilir; yüklenemezse emoji'ye düşer) */
+  avatar?: string;
   /** NPC (anlatıcının seslendirdiği yan karakter) — karakter seçiminde çıkmaz */
   npc?: boolean;
 }
@@ -67,6 +69,8 @@ export interface Scenario {
   demo?: boolean;
   /** taban atmosfer paleti — verilmezse seriesId'den türetilir (orman/cyber) */
   ambiance?: "forest" | "cyber";
+  /** hikayeye özel anlatıcı portresi — verilmezse genel anlatıcı (narrator.webp) kullanılır */
+  narratorAvatar?: string;
   characters: PlayCharacter[];
   beats: Beat[];
 }
@@ -136,14 +140,15 @@ export const scenarios: Scenario[] = [
     seriesId: "istanbul-exe",
     episode: 1,
     title: "Rüya Departmanı · 1. Kısım",
+    narratorAvatar: "/assets/avatars/istanbul-exe/narrator.webp",
     characters: [
       { id: "gm", name: "Anlatıcı", player: "Soykan Söner", role: "Oyun Yöneticisi", face: "🎲" },
-      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮" },
-      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻" },
-      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️" },
-      { id: "marek", name: "Marek", player: "Soykan Söner", role: "Departman Amiri", face: "🧛", npc: true },
-      { id: "parker", name: "Parker", player: "Soykan Söner", role: "Müşteri · 47", face: "🥱", npc: true },
-      { id: "selim", name: "Selim", player: "Soykan Söner", role: "Parker'ın Avukatı", face: "👔", npc: true },
+      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮", avatar: "/assets/avatars/istanbul-exe/rosie.webp" },
+      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻", avatar: "/assets/avatars/istanbul-exe/leo.webp" },
+      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️", avatar: "/assets/avatars/istanbul-exe/tahir.webp" },
+      { id: "marek", name: "Marek", player: "Soykan Söner", role: "Departman Amiri", face: "🧛", avatar: "/assets/avatars/istanbul-exe/marek.webp", npc: true },
+      { id: "parker", name: "Parker", player: "Soykan Söner", role: "Müşteri · 47", face: "🥱", avatar: "/assets/avatars/istanbul-exe/parker.webp", npc: true },
+      { id: "selim", name: "Selim", player: "Soykan Söner", role: "Parker'ın Avukatı", face: "👔", avatar: "/assets/avatars/istanbul-exe/selim.webp", npc: true },
     ],
     beats: [
       {
@@ -304,12 +309,13 @@ export const scenarios: Scenario[] = [
     seriesId: "istanbul-exe",
     episode: 2,
     title: "Galata'nın Kabusu · 2. Kısım",
+    narratorAvatar: "/assets/avatars/istanbul-exe/narrator.webp",
     characters: [
       { id: "gm", name: "Anlatıcı", player: "Soykan Söner", role: "Oyun Yöneticisi", face: "🎲" },
-      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮" },
-      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻" },
-      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️" },
-      { id: "melis", name: "Melis", player: "Soykan Söner", role: "Sibernetik · 24", face: "🦾", npc: true },
+      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮", avatar: "/assets/avatars/istanbul-exe/rosie.webp" },
+      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻", avatar: "/assets/avatars/istanbul-exe/leo.webp" },
+      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️", avatar: "/assets/avatars/istanbul-exe/tahir.webp" },
+      { id: "melis", name: "Melis", player: "Soykan Söner", role: "Sibernetik · 24", face: "🦾", avatar: "/assets/avatars/istanbul-exe/melis.webp", npc: true },
     ],
     beats: [
       {

@@ -984,6 +984,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
   border: 1px solid color-mix(in srgb, var(--ac, var(--gold)) 50%, transparent);
 }
 .pg-avatar.me { color: var(--gold); background: rgba(216, 180, 90, 0.16); border-color: var(--gold); }
+/* AI portre görseli — daireyi tamamen doldurur */
+.pg-avatar.has-img { overflow: hidden; background: var(--bg-2); }
+.pg-avatar.has-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* ── senaryo sahnesi: görsel roman ── */
 .vn {

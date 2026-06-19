@@ -26,26 +26,34 @@ const FACE_BY_ROLE: Record<string, string> = {
 const deriveFace = (role?: string) => (role && FACE_BY_ROLE[role]) || "🎭";
 const faceOfChar = (c?: { face?: string; role?: string }) => c?.face ?? deriveFace(c?.role);
 
-const NARRATOR = { name: "Anlatıcı", face: "🎲", color: "#caa84e" };
+const NARRATOR = { name: "Anlatıcı", face: "🎲", color: "#caa84e", avatar: "/assets/avatars/narrator.webp" };
 
 function Avatar({
   face,
   color,
+  img,
   me = false,
   size = 40,
 }: {
   face: string;
   color: string;
+  img?: string;
   me?: boolean;
   size?: number;
 }) {
+  const [broken, setBroken] = useState(false);
+  const showImg = !!img && !broken;
   return (
     <span
-      className={`pg-avatar ${me ? "me" : ""}`}
+      className={`pg-avatar ${me ? "me" : ""} ${showImg ? "has-img" : ""}`}
       style={{ ["--ac" as string]: color, width: size, height: size, fontSize: size * 0.52 }}
       aria-hidden="true"
     >
-      {face}
+      {showImg ? (
+        <img src={img} alt="" loading="lazy" onError={() => setBroken(true)} />
+      ) : (
+        face
+      )}
     </span>
   );
 }
@@ -202,7 +210,7 @@ export default function PlayGame({
                     setStep("episode");
                   }}
                 >
-                  <Avatar face={faceOf(c.id)} color={charColor(c.id)} size={56} />
+                  <Avatar face={faceOf(c.id)} color={charColor(c.id)} img={c.avatar} size={56} />
                   <span className="cCard-name">{c.name}</span>
                   {c.role && <span className="cCard-role">{c.role}</span>}
                   <span className="cCard-player">{c.player}</span>
@@ -375,6 +383,7 @@ type Msg =
       tag?: string;
       text: string;
       art?: { src: string; alt: string };
+      avatar?: string;
     }
   | { type: "outcome"; ok?: boolean; text: string };
 
@@ -422,6 +431,7 @@ function PlayEngine({
   const charMap = useMemo(() => new Map(scenario.characters.map((c) => [c.id, c])), [scenario]);
   const nameOf = (id: string) => (id === charId ? "Sen" : charMap.get(id)?.name ?? id);
   const faceOf = (id: string) => faceOfChar(charMap.get(id));
+  const avatarOf = (id: string) => charMap.get(id)?.avatar;
   /* renk: aktif senaryonun karakter sırasına göre — NPC'ler de stabil renk alır */
   const charColor = (id: string) => {
     if (id === "gm") return "#caa84e";
@@ -436,6 +446,8 @@ function PlayEngine({
 
   /* taban atmosfer (orman / cyber) — seriden türetilir */
   const ambiance = scenario.ambiance ?? (scenario.seriesId === "istanbul-exe" ? "cyber" : "forest");
+  /* anlatıcı — hikayeye özel portre varsa onu kullan, yoksa genel anlatıcı */
+  const narrator = scenario.narratorAvatar ? { ...NARRATOR, avatar: scenario.narratorAvatar } : NARRATOR;
   /* o anki ruh hali = imleçteki/öncesindeki en yakın sahnenin mood'u */
   const mood = useMemo<Mood>(() => {
     for (let i = Math.min(cursor, beats.length - 1); i >= 0; i--) {
@@ -560,13 +572,14 @@ function PlayEngine({
       case "scene":
         return [{ type: "scene", title: bt.title, subtitle: bt.subtitle }];
       case "narration":
-        return [{ type: "say", ...NARRATOR, me: false, text: bt.text, art: bt.art }];
+        return [{ type: "say", ...narrator, me: false, text: bt.text, art: bt.art }];
       case "line":
         return [
           {
             type: "say",
             name: nameOf(bt.who),
             face: faceOf(bt.who),
+            avatar: avatarOf(bt.who),
             color: charColor(bt.who),
             me: bt.who === charId,
             text: bt.text,
@@ -575,7 +588,7 @@ function PlayEngine({
       case "choice": {
         if (bt.actor === charId) {
           const base: Msg[] = [
-            { type: "say", ...NARRATOR, me: false, tag: "Karar · senin sıran", text: bt.prompt },
+            { type: "say", ...narrator, me: false, tag: "Karar · senin sıran", text: bt.prompt },
           ];
           if (outcomes[i]) base.push({ type: "outcome", text: outcomes[i].text });
           return base;
@@ -586,6 +599,7 @@ function PlayEngine({
             type: "say",
             name: nameOf(bt.actor),
             face: faceOf(bt.actor),
+            avatar: avatarOf(bt.actor),
             color: charColor(bt.actor),
             me: false,
             tag: "kararı",
@@ -598,7 +612,7 @@ function PlayEngine({
           const base: Msg[] = [
             {
               type: "say",
-              ...NARRATOR,
+              ...narrator,
               me: false,
               tag: `Zar · senin atışın · hedef ${bt.dc}+`,
               text: bt.prompt,
@@ -617,6 +631,7 @@ function PlayEngine({
             type: "say",
             name: nameOf(bt.actor),
             face: faceOf(bt.actor),
+            avatar: avatarOf(bt.actor),
             color: charColor(bt.actor),
             me: false,
             tag,
@@ -686,7 +701,7 @@ function PlayEngine({
       {/* HUD */}
       <div className="vn-hud">
         <div className="vn-hud-who">
-          <Avatar face={faceOfChar(me)} color={charColor(charId)} me size={38} />
+          <Avatar face={faceOfChar(me)} color={charColor(charId)} img={me?.avatar} me size={38} />
           <div>
             <span className="vn-hud-name">{me?.name}</span>
             <span className="vn-hud-sub">
@@ -813,7 +828,7 @@ function PlayEngine({
 
               <div className="vn-card" data-amb={ambiance}>
                 <div className="vn-card-top">
-                  <Avatar face={faceOfChar(me)} color={charColor(charId)} me size={44} />
+                  <Avatar face={faceOfChar(me)} color={charColor(charId)} img={me?.avatar} me size={44} />
                   <div>
                     <span className="vn-card-name">{me?.name}</span>
                     <span className="vn-card-meta">
@@ -983,7 +998,7 @@ function Row({
   const text = typed ?? msg.text;
   return (
     <div className={`vn-row ${msg.me ? "me" : ""} ${live ? "is-live" : ""}`}>
-      <Avatar face={msg.face} color={msg.color} me={msg.me} size={48} />
+      <Avatar face={msg.face} color={msg.color} img={msg.avatar} me={msg.me} size={48} />
       <div className="vn-bubble" style={{ ["--ac" as string]: msg.me ? "var(--gold)" : msg.color }}>
         <span className="vn-bubble-name">{msg.tag ? `${msg.name} · ${msg.tag}` : msg.name}</span>
         {msg.art && (
