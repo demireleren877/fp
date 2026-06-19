@@ -4,6 +4,7 @@ import {
   DESIGN_PRESETS,
   type DicePhysics,
   type DiceDesign,
+  type MatOption,
 } from "../data/dicePresets";
 
 /**
@@ -12,9 +13,6 @@ import {
  * güncel ikiliyi yukarı verir. Dışarı tıklama / Esc ile kapanır.
  * Hem hero arenasında (DiceArena) hem oyun içi zarda (GameDice) kullanılır.
  */
-/** seçilebilir mat tasarımı — opsiyonel, yalnızca hero arenasında gösterilir */
-export type MatOption = { id: string; label: string; src: string };
-
 const lsGet = (k: string, fallback: string) => {
   try {
     return localStorage.getItem(k) || fallback;

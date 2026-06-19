@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import DiceBox, { type DieResult } from "@3d-dice/dice-box";
-import { PHYSICS_PRESETS, DESIGN_PRESETS, type DicePhysics, type DiceDesign } from "../data/dicePresets";
-import DicePresetLab from "./DicePresetLab";
+import { savedPhysics, savedDesign, savedMat } from "../data/dicePresets";
 
 type Readout = { text: string; cls: "" | "crit" | "fail" };
 
@@ -20,11 +19,9 @@ const defaultInterpret = (v: number): Readout =>
 export default function GameDice({
   onResult,
   interpret = defaultInterpret,
-  lab = true,
 }: {
   onResult: (v: number) => void;
   interpret?: (v: number) => Readout;
-  lab?: boolean;
 }) {
   const uid = useId().replace(/:/g, "");
   const canvasId = `game-dice-${uid}`;
@@ -34,11 +31,9 @@ export default function GameDice({
   cb.current = onResult;
   const interp = useRef(interpret);
   interp.current = interpret;
-  // seçili preset'ler — atış anında taze okumak için ref'te
-  const presetRef = useRef<{ physics: DicePhysics; design: DiceDesign }>({
-    physics: PHYSICS_PRESETS[0],
-    design: DESIGN_PRESETS[0],
-  });
+  // ana sayfada seçilip localStorage'a yazılmış fizik + tasarım + mat — oyun içinde de aynısı
+  const presetRef = useRef({ physics: savedPhysics(), design: savedDesign() });
+  const mat = savedMat();
 
   const [ready, setReady] = useState(false);
   const [rolled, setRolled] = useState(false);
@@ -48,13 +43,14 @@ export default function GameDice({
     let disposed = false;
     const t = window.setTimeout(() => {
       if (disposed) return;
+      const { physics, design } = presetRef.current;
       const box = new DiceBox({
         container: `#${canvasId}`,
         assetPath: "/assets/dice-box/",
         theme: "default",
-        themeColor: DESIGN_PRESETS[0].themeColor,
-        ...DESIGN_PRESETS[0].config,
-        ...PHYSICS_PRESETS[0].config,
+        themeColor: design.themeColor,
+        ...design.config,
+        ...physics.config,
       });
       boxRef.current = box;
       box
@@ -100,7 +96,7 @@ export default function GameDice({
   return (
     <div className="arena compact">
       <div className="arena-stage">
-        <img className="arena-mat" src="/assets/dice-mat.svg" alt="" aria-hidden="true" />
+        <img className="arena-mat" src={mat.src} alt="" aria-hidden="true" />
         <div
           id={canvasId}
           className="arena-canvas"
@@ -110,13 +106,6 @@ export default function GameDice({
           onClick={roll}
           onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && roll()}
         />
-        {lab && !rolled && (
-          <DicePresetLab
-            onChange={(physics, design) => {
-              presetRef.current = { physics, design };
-            }}
-          />
-        )}
       </div>
       <div className={`arena-readout ${out.cls}`}>{out.text}</div>
       {!rolled && (

@@ -118,6 +118,44 @@ export const PHYSICS_PRESETS: DicePhysics[] = [
   },
 ];
 
+/** seçilebilir mat tasarımı — ana sayfadaki ayar modalında seçilir */
+export type MatOption = { id: string; label: string; src: string };
+
+export const MATS: readonly MatOption[] = [
+  { id: "arcane", label: "Büyü Çemberi", src: "/assets/mats/arcane.svg" },
+  { id: "spot", label: "Spot", src: "/assets/mats/spot.svg" },
+  { id: "hex", label: "Hex Tahta", src: "/assets/mats/hex.svg" },
+  { id: "stone", label: "Taş Tablet", src: "/assets/mats/stone.svg" },
+  { id: "classic", label: "Klasik", src: "/assets/dice-mat.svg" },
+] as const;
+
+/** localStorage anahtarları — ana sayfada yazılır, oyun içinde de okunur */
+export const DICE_KEYS = {
+  mat: "fp:mat",
+  phys: "fp:dice:phys",
+  design: "fp:dice:design",
+} as const;
+
+const lsGet = (k: string): string | null => {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+};
+
+/** kaydedilmiş fizik preset'i (yoksa varsayılan) */
+export const savedPhysics = (): DicePhysics =>
+  PHYSICS_PRESETS.find((p) => p.id === lsGet(DICE_KEYS.phys)) ?? PHYSICS_PRESETS[0];
+
+/** kaydedilmiş zar tasarımı (yoksa varsayılan) */
+export const savedDesign = (): DiceDesign =>
+  DESIGN_PRESETS.find((d) => d.id === lsGet(DICE_KEYS.design)) ?? DESIGN_PRESETS[0];
+
+/** kaydedilmiş mat (yoksa varsayılan = Büyü Çemberi) */
+export const savedMat = (): MatOption =>
+  MATS.find((m) => m.id === lsGet(DICE_KEYS.mat)) ?? MATS[0];
+
 export const DESIGN_PRESETS: DiceDesign[] = [
   {
     id: "altin",

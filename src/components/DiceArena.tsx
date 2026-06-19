@@ -1,19 +1,17 @@
 import { useEffect, useId, useRef, useState } from "react";
 import DiceBox, { type DieResult } from "@3d-dice/dice-box";
-import { PHYSICS_PRESETS, DESIGN_PRESETS, type DicePhysics, type DiceDesign } from "../data/dicePresets";
+import {
+  MATS,
+  DICE_KEYS,
+  savedMat,
+  savedPhysics,
+  savedDesign,
+  type DicePhysics,
+  type DiceDesign,
+} from "../data/dicePresets";
 import DicePresetLab from "./DicePresetLab";
 
 type Readout = { text: string; cls: "" | "crit" | "fail" };
-
-/** seçilebilir mat tasarımları — hero'da canlı değiştirilir, seçim localStorage'da kalır */
-const MATS = [
-  { id: "arcane", label: "Büyü Çemberi", src: "/assets/mats/arcane.svg" },
-  { id: "spot", label: "Spot", src: "/assets/mats/spot.svg" },
-  { id: "hex", label: "Hex Tahta", src: "/assets/mats/hex.svg" },
-  { id: "stone", label: "Taş Tablet", src: "/assets/mats/stone.svg" },
-  { id: "classic", label: "Klasik", src: "/assets/dice-mat.svg" },
-] as const;
-const MAT_KEY = "fp:mat";
 
 /**
  * Hero'daki gerçek 3D zar arenası.
@@ -29,27 +27,21 @@ export default function DiceArena({ lab = false }: { lab?: boolean }) {
   const boxRef = useRef<DiceBox | null>(null);
   const [ready, setReady] = useState(false);
   const [out, setOut] = useState<Readout>({ text: "yükleniyor…", cls: "" });
-  const [matId, setMatId] = useState<string>(() => {
-    try {
-      return localStorage.getItem(MAT_KEY) || MATS[0].id;
-    } catch {
-      return MATS[0].id;
-    }
-  });
+  const [matId, setMatId] = useState<string>(() => savedMat().id);
   const mat = MATS.find((m) => m.id === matId) ?? MATS[0];
   const pickMat = (id: string) => {
     setMatId(id);
     try {
-      localStorage.setItem(MAT_KEY, id);
+      localStorage.setItem(DICE_KEYS.mat, id);
     } catch {
       /* yoksay */
     }
   };
 
-  // seçili preset'ler — atış anında taze okumak için ref'te
+  // seçili preset'ler — atış anında taze okumak için ref'te (kaydedilmişten başla)
   const presetRef = useRef<{ physics: DicePhysics; design: DiceDesign }>({
-    physics: PHYSICS_PRESETS[0],
-    design: DESIGN_PRESETS[0],
+    physics: savedPhysics(),
+    design: savedDesign(),
   });
 
   useEffect(() => {
@@ -58,13 +50,14 @@ export default function DiceArena({ lab = false }: { lab?: boolean }) {
     // mount gerçekten başlatır; çift canvas/çift fizik dünyası oluşmaz.
     const t = window.setTimeout(() => {
       if (disposed) return;
+      const { physics, design } = presetRef.current;
       const box = new DiceBox({
         container: `#${canvasId}`,
         assetPath: "/assets/dice-box/",
         theme: "default",
-        themeColor: DESIGN_PRESETS[0].themeColor,
-        ...DESIGN_PRESETS[0].config,
-        ...PHYSICS_PRESETS[0].config,
+        themeColor: design.themeColor,
+        ...design.config,
+        ...physics.config,
       });
       boxRef.current = box;
 
