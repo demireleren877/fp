@@ -5,6 +5,16 @@ import DicePresetLab from "./DicePresetLab";
 
 type Readout = { text: string; cls: "" | "crit" | "fail" };
 
+/** seçilebilir mat tasarımları — hero'da canlı değiştirilir, seçim localStorage'da kalır */
+const MATS = [
+  { id: "arcane", label: "Büyü Çemberi", src: "/assets/mats/arcane.svg" },
+  { id: "spot", label: "Spot", src: "/assets/mats/spot.svg" },
+  { id: "hex", label: "Hex Tahta", src: "/assets/mats/hex.svg" },
+  { id: "stone", label: "Taş Tablet", src: "/assets/mats/stone.svg" },
+  { id: "classic", label: "Klasik", src: "/assets/dice-mat.svg" },
+] as const;
+const MAT_KEY = "fp:mat";
+
 /**
  * Hero'daki gerçek 3D zar arenası.
  * Özgün "büyü çemberi" matı (SVG) + dice-box (Babylon + ammo fizik).
@@ -19,6 +29,22 @@ export default function DiceArena({ lab = false }: { lab?: boolean }) {
   const boxRef = useRef<DiceBox | null>(null);
   const [ready, setReady] = useState(false);
   const [out, setOut] = useState<Readout>({ text: "yükleniyor…", cls: "" });
+  const [matId, setMatId] = useState<string>(() => {
+    try {
+      return localStorage.getItem(MAT_KEY) || MATS[0].id;
+    } catch {
+      return MATS[0].id;
+    }
+  });
+  const mat = MATS.find((m) => m.id === matId) ?? MATS[0];
+  const pickMat = (id: string) => {
+    setMatId(id);
+    try {
+      localStorage.setItem(MAT_KEY, id);
+    } catch {
+      /* yoksay */
+    }
+  };
 
   // seçili preset'ler — atış anında taze okumak için ref'te
   const presetRef = useRef<{ physics: DicePhysics; design: DiceDesign }>({
@@ -85,7 +111,7 @@ export default function DiceArena({ lab = false }: { lab?: boolean }) {
   return (
     <div className="arena">
       <div className="arena-stage">
-        <img className="arena-mat" src="/assets/dice-mat.svg" alt="" aria-hidden="true" />
+        <img className="arena-mat" src={mat.src} alt="" aria-hidden="true" />
         <div
           id={canvasId}
           className="arena-canvas"
@@ -100,6 +126,9 @@ export default function DiceArena({ lab = false }: { lab?: boolean }) {
             onChange={(physics, design) => {
               presetRef.current = { physics, design };
             }}
+            mats={MATS}
+            matId={matId}
+            onMat={pickMat}
           />
         )}
       </div>

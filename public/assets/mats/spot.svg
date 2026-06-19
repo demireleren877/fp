@@ -1,0 +1,28 @@
+<svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <!-- SADE REFLEKTÖR / SPOT — çerçeve yok, zarın düştüğü yere odaklı ışık havuzu -->
+  <defs>
+    <radialGradient id="pool" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#15130c"/>
+      <stop offset="45%" stop-color="#0d0b08"/>
+      <stop offset="100%" stop-color="#070608"/>
+    </radialGradient>
+    <radialGradient id="spot" cx="50%" cy="46%" r="42%">
+      <stop offset="0%" stop-color="rgba(216,180,90,0.30)"/>
+      <stop offset="40%" stop-color="rgba(216,180,90,0.10)"/>
+      <stop offset="100%" stop-color="rgba(216,180,90,0)"/>
+    </radialGradient>
+    <radialGradient id="edgeDark" cx="50%" cy="50%" r="50%">
+      <stop offset="55%" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.75)"/>
+    </radialGradient>
+  </defs>
+
+  <circle cx="500" cy="500" r="500" fill="url(#pool)"/>
+  <circle cx="500" cy="500" r="420" fill="url(#spot)"/>
+
+  <!-- tek, ince altın halka -->
+  <circle cx="500" cy="500" r="384" fill="none" stroke="#d8b45a" stroke-width="1.25" opacity="0.5"/>
+  <circle cx="500" cy="500" r="372" fill="none" stroke="#d8b45a" stroke-width="0.75" opacity="0.25"/>
+
+  <circle cx="500" cy="500" r="500" fill="url(#edgeDark)"/>
+</svg>

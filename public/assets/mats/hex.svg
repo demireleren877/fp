@@ -1,0 +1,49 @@
+<svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <!-- TAKTİK HEX SAVAŞ TAHTASI — altıgen ızgara battle-map -->
+  <defs>
+    <radialGradient id="hBg" cx="50%" cy="44%" r="62%">
+      <stop offset="0%" stop-color="#13241e"/>
+      <stop offset="55%" stop-color="#0c1813"/>
+      <stop offset="100%" stop-color="#070d0a"/>
+    </radialGradient>
+    <pattern id="hexGrid" width="60" height="103.92" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#d8b45a" stroke-width="1.1" opacity="0.32">
+        <polygon points="30,-34.64 60,-17.32 60,17.32 30,34.64 0,17.32 0,-17.32"/>
+        <polygon points="30,69.28 60,86.6 60,121.24 30,138.56 0,121.24 0,86.6"/>
+        <polygon points="0,17.32 30,34.64 30,69.28 0,86.6 -30,69.28 -30,34.64"/>
+        <polygon points="60,17.32 90,34.64 90,69.28 60,86.6 30,69.28 30,34.64"/>
+      </g>
+    </pattern>
+    <radialGradient id="hCenter" cx="50%" cy="50%" r="48%">
+      <stop offset="0%" stop-color="rgba(216,180,90,0.16)"/>
+      <stop offset="60%" stop-color="rgba(216,180,90,0.04)"/>
+      <stop offset="100%" stop-color="rgba(216,180,90,0)"/>
+    </radialGradient>
+    <radialGradient id="hVig" cx="50%" cy="50%" r="50%">
+      <stop offset="52%" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.7)"/>
+    </radialGradient>
+    <clipPath id="hClip">
+      <rect x="70" y="70" width="860" height="860" rx="40"/>
+    </clipPath>
+  </defs>
+
+  <rect x="70" y="70" width="860" height="860" rx="40" fill="url(#hBg)"/>
+  <g clip-path="url(#hClip)">
+    <rect x="70" y="70" width="860" height="860" fill="url(#hexGrid)"/>
+    <rect x="70" y="70" width="860" height="860" fill="url(#hCenter)"/>
+    <rect x="0" y="0" width="1000" height="1000" fill="url(#hVig)"/>
+  </g>
+
+  <!-- ince çerçeve -->
+  <rect x="70" y="70" width="860" height="860" rx="40" fill="none" stroke="#d8b45a" stroke-width="2" opacity="0.6"/>
+  <rect x="84" y="84" width="832" height="832" rx="32" fill="none" stroke="#d8b45a" stroke-width="0.75" opacity="0.3"/>
+
+  <!-- köşe nişancıları -->
+  <g stroke="#d8b45a" stroke-width="2.5" opacity="0.7" fill="none" stroke-linecap="round">
+    <path d="M110,150 L110,110 L150,110"/>
+    <path d="M890,150 L890,110 L850,110"/>
+    <path d="M110,850 L110,890 L150,890"/>
+    <path d="M890,850 L890,890 L850,890"/>
+  </g>
+</svg>

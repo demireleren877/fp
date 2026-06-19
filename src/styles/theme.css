@@ -1567,9 +1567,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
 }
 .arena-stage {
   position: relative;
-  width: min(100%, 460px);
+  width: min(100%, 540px);
   aspect-ratio: 1;
-  filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 28px 56px rgba(0, 0, 0, 0.6));
 }
 .arena-mat {
   position: absolute;
@@ -1584,8 +1584,8 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 72%;
-  height: 72%;
+  width: 78%;
+  height: 78%;
   transform: translate(-50%, -50%);
   cursor: pointer;
   outline: none;

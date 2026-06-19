@@ -1,0 +1,63 @@
+<svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <!-- ANTİK TAŞ TABLET / SUNAK — oyulmuş levha, aşınmış runeler, çatlaklar -->
+  <defs>
+    <linearGradient id="stone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a3631"/>
+      <stop offset="50%" stop-color="#2a2723"/>
+      <stop offset="100%" stop-color="#1c1a17"/>
+    </linearGradient>
+    <radialGradient id="recess" cx="50%" cy="46%" r="52%">
+      <stop offset="0%" stop-color="#16140f"/>
+      <stop offset="70%" stop-color="#0f0d0a"/>
+      <stop offset="100%" stop-color="#080705"/>
+    </radialGradient>
+    <radialGradient id="sGlow" cx="50%" cy="46%" r="46%">
+      <stop offset="0%" stop-color="rgba(216,180,90,0.18)"/>
+      <stop offset="55%" stop-color="rgba(216,180,90,0.05)"/>
+      <stop offset="100%" stop-color="rgba(216,180,90,0)"/>
+    </radialGradient>
+    <g id="sRune" stroke="#caa84e" stroke-width="3.5" stroke-linecap="round" fill="none" opacity="0.55">
+      <path d="M0,-15 L0,15 M0,-6 L11,-15 M0,7 L-11,16"/>
+    </g>
+  </defs>
+
+  <!-- dış taş gövde (oktagon levha) -->
+  <polygon points="912,690 690,912 310,912 88,690 88,310 310,88 690,88 912,310"
+           fill="url(#stone)" stroke="#0a0907" stroke-width="4"/>
+  <!-- pah / eğim hattı -->
+  <polygon points="864,672 672,864 328,864 136,672 136,328 328,136 672,136 864,328"
+           fill="none" stroke="#000000" stroke-width="6" opacity="0.4"/>
+  <polygon points="864,672 672,864 328,864 136,672 136,328 328,136 672,136 864,328"
+           fill="none" stroke="#4a463f" stroke-width="2" opacity="0.6"/>
+
+  <!-- oyuk merkez (zar burada) -->
+  <polygon points="792,640 640,792 360,792 208,640 208,360 360,208 640,208 792,360"
+           fill="url(#recess)" stroke="#000000" stroke-width="3" opacity="0.95"/>
+  <circle cx="500" cy="486" r="300" fill="url(#sGlow)"/>
+
+  <!-- aşınmış çatlaklar -->
+  <g stroke="#0a0907" stroke-width="2.5" opacity="0.5" fill="none" stroke-linecap="round">
+    <path d="M150,250 q40,30 30,80 t50,60"/>
+    <path d="M850,300 q-50,20 -40,70"/>
+    <path d="M170,760 q60,-10 80,40"/>
+    <path d="M820,740 q-30,40 -90,30"/>
+  </g>
+
+  <!-- kenar runeleri -->
+  <g>
+    <use href="#sRune" transform="translate(500 150)"/>
+    <use href="#sRune" transform="translate(710 200) rotate(28)"/>
+    <use href="#sRune" transform="translate(850 410) rotate(60)"/>
+    <use href="#sRune" transform="translate(850 590) rotate(-60)"/>
+    <use href="#sRune" transform="translate(710 800) rotate(-28)"/>
+    <use href="#sRune" transform="translate(500 850)"/>
+    <use href="#sRune" transform="translate(290 800) rotate(28)"/>
+    <use href="#sRune" transform="translate(150 590) rotate(60)"/>
+    <use href="#sRune" transform="translate(150 410) rotate(-60)"/>
+    <use href="#sRune" transform="translate(290 200) rotate(-28)"/>
+  </g>
+
+  <!-- oyuk iç altın hattı -->
+  <polygon points="792,640 640,792 360,792 208,640 208,360 360,208 640,208 792,360"
+           fill="none" stroke="#caa84e" stroke-width="1.25" opacity="0.4"/>
+</svg>

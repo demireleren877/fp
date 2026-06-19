@@ -12,24 +12,50 @@ import {
  * güncel ikiliyi yukarı verir. Dışarı tıklama / Esc ile kapanır.
  * Hem hero arenasında (DiceArena) hem oyun içi zarda (GameDice) kullanılır.
  */
+/** seçilebilir mat tasarımı — opsiyonel, yalnızca hero arenasında gösterilir */
+export type MatOption = { id: string; label: string; src: string };
+
+const lsGet = (k: string, fallback: string) => {
+  try {
+    return localStorage.getItem(k) || fallback;
+  } catch {
+    return fallback;
+  }
+};
+const lsSet = (k: string, v: string) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* yoksay */
+  }
+};
+
 export default function DicePresetLab({
   onChange,
+  mats,
+  matId,
+  onMat,
 }: {
   onChange: (physics: DicePhysics, design: DiceDesign) => void;
+  mats?: readonly MatOption[];
+  matId?: string;
+  onMat?: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [physId, setPhysId] = useState(PHYSICS_PRESETS[0].id);
-  const [designId, setDesignId] = useState(DESIGN_PRESETS[0].id);
+  const [physId, setPhysId] = useState(() => lsGet("fp:dice:phys", PHYSICS_PRESETS[0].id));
+  const [designId, setDesignId] = useState(() => lsGet("fp:dice:design", DESIGN_PRESETS[0].id));
   const labRef = useRef<HTMLDivElement | null>(null);
 
   const physics = PHYSICS_PRESETS.find((p) => p.id === physId) ?? PHYSICS_PRESETS[0];
   const design = DESIGN_PRESETS.find((d) => d.id === designId) ?? DESIGN_PRESETS[0];
 
-  // seçim değiştikçe güncel ikiliyi yukarı bildir (ilk mount dahil)
+  // seçim değiştikçe güncel ikiliyi yukarı bildir (ilk mount dahil) + localStorage'a yaz
   const cb = useRef(onChange);
   cb.current = onChange;
   useEffect(() => {
     cb.current(physics, design);
+    lsSet("fp:dice:phys", physics.id);
+    lsSet("fp:dice:design", design.id);
   }, [physics, design]);
 
   // popup açıkken: dışarı tıklama veya Esc kapatır
@@ -62,6 +88,23 @@ export default function DicePresetLab({
 
       {open && (
         <div className="dice-lab-popup" role="dialog" aria-label="Zar ayarları">
+          {mats && matId && onMat && (
+            <div className="dice-lab-group">
+              <span className="dice-lab-label">Mat</span>
+              <div className="dice-lab-chips">
+                {mats.map((m) => (
+                  <button
+                    key={m.id}
+                    className={`dice-chip ${m.id === matId ? "is-on" : ""}`}
+                    onClick={() => onMat(m.id)}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="dice-lab-group">
             <span className="dice-lab-label">Fizik</span>
             <div className="dice-lab-chips">
