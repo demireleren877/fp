@@ -9,9 +9,50 @@ import {
   type PlayCharacter,
   type Mood,
   type Clue,
+  type SceneArt,
 } from "../data/scenarios";
 
 type Step = "series" | "character" | "episode" | "play";
+
+/** kullanıcı animasyon azaltmayı tercih ediyor mu (video yerine statik görsel) */
+const prefersReducedMotion = () => {
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Tam ekran sahne arka planı. Atmosferik döngü videosu varsa onu oynar
+ * (poster = statik görsel → boş ekran yok); video yoksa, yüklenemezse ya da
+ * kullanıcı azaltılmış hareket istiyorsa statik WebP'ye düşer.
+ */
+function SceneBackdrop({ art }: { art: SceneArt }) {
+  const [reduce] = useState(prefersReducedMotion);
+  const [failed, setFailed] = useState(false);
+  const showVideo = !!art.video && !reduce && !failed;
+  return (
+    <div className="vn-backdrop" aria-hidden="true">
+      {showVideo ? (
+        <video
+          poster={art.src}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          onError={() => setFailed(true)}
+        >
+          {art.video!.webm && <source src={art.video!.webm} type="video/webm" />}
+          <source src={art.video!.mp4} type="video/mp4" />
+        </video>
+      ) : (
+        <img src={art.src} alt="" loading="lazy" />
+      )}
+    </div>
+  );
+}
 
 /* karakter renk paleti — sahnede konuşanları ayırt etmek için */
 const CHAR_COLORS = ["#d8b45a", "#9b6fd0", "#5fd0a8", "#e8884c", "#6f9bd0", "#b23148"];
@@ -670,11 +711,7 @@ function PlayEngine({
   return (
     <div className="vn" data-amb={ambiance} data-mood={mood}>
       {/* sahne backdrop'u — çizim varsa tam ekran, yoksa prosedürel atmosfer */}
-      {sceneArt && (
-        <div className="vn-backdrop" key={sceneArt.src} aria-hidden="true">
-          <img src={sceneArt.src} alt="" loading="lazy" />
-        </div>
-      )}
+      {sceneArt && <SceneBackdrop art={sceneArt} key={sceneArt.src} />}
       {/* atmosfer katmanları */}
       <div className="vn-fog" aria-hidden="true" />
       <div className="vn-embers" aria-hidden="true">

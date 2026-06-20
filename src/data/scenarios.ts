@@ -25,7 +25,12 @@ export type Clue = { kind: "clue" | "item"; label: string; note?: string };
  * (yavaş zoom). `narration` beat'inde → balonun üstünde çizgi-roman karesi paneli.
  * Verilmezse prosedürel atmosfer devreye girer; görsel kısmi olsa da site bozulmaz.
  */
-export type SceneArt = { src: string; alt: string };
+export type SceneArt = {
+  src: string;
+  alt: string;
+  /** atmosferik döngü videosu (varsa src üstünde oynar; src poster/fallback olur) */
+  video?: { webm?: string; mp4: string };
+};
 
 export type Beat =
   | { kind: "scene"; title: string; subtitle?: string; mood?: Mood; art?: SceneArt }
@@ -159,6 +164,10 @@ export const scenarios: Scenario[] = [
         art: {
           src: "/assets/scenes/istanbul-open.webp",
           alt: "Cyberpunk İstanbul: cami kubbesi ve minareler, arkada neon gökdelenler, Boğaz köprüsü ve vapur",
+          video: {
+            webm: "/assets/scenes/istanbul-open.webm",
+            mp4: "/assets/scenes/istanbul-open.mp4",
+          },
         },
       },
       {

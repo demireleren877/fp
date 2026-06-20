@@ -1299,11 +1299,15 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
   pointer-events: none;
   animation: vnFade 1.3s ease;
 }
-.vn-backdrop img {
+.vn-backdrop img,
+.vn-backdrop video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   opacity: 0.46;
+}
+/* Ken Burns yalnızca statik görselde; video kendi hareketini oynatır */
+.vn-backdrop img {
   transform-origin: center;
   animation: vnKenBurns 28s ease-in-out infinite alternate;
 }
