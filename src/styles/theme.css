@@ -211,6 +211,78 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; t
 .btn.ghost { background: transparent; color: var(--gold); }
 .btn.ghost:hover { background: rgba(216, 180, 90, 0.1); box-shadow: none; }
 
+/* ── Şaşalı / FRP butonu ── */
+.btn-royal {
+  position: relative;
+  isolation: isolate;
+  padding: 16px 34px;
+  font-size: 0.92rem;
+  letter-spacing: 0.14em;
+  border-radius: 6px;
+  border: 1px solid rgba(234, 217, 160, 0.65);
+  color: #2a1f08;
+  background: linear-gradient(180deg, #f4e4ad 0%, #e3c069 42%, #c79a3f 58%, #d8b45a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 2px rgba(120, 80, 20, 0.45),
+    0 2px 10px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(155, 111, 208, 0.25),
+    0 0 26px rgba(216, 180, 90, 0.28);
+  overflow: hidden;
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t) var(--ease),
+    filter var(--t) var(--ease);
+}
+/* hareketli ışık parıltısı */
+.btn-royal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.85) 48%, transparent 62%);
+  transform: translateX(-120%);
+  transition: transform 0.7s var(--ease);
+}
+/* dış mor/altın aura */
+.btn-royal::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -2;
+  border-radius: inherit;
+  background: linear-gradient(120deg, var(--purple), var(--gold-soft), var(--purple));
+  opacity: 0;
+  filter: blur(6px);
+  transition: opacity var(--t) var(--ease);
+}
+.btn-royal:hover {
+  background: linear-gradient(180deg, #fbeec0 0%, #ecca78 42%, #d3a749 58%, #ead9a0 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 2px rgba(120, 80, 20, 0.5),
+    0 6px 18px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(155, 111, 208, 0.4),
+    0 0 38px rgba(216, 180, 90, 0.5);
+}
+.btn-royal:hover::before { transform: translateX(120%); }
+.btn-royal:hover::after { opacity: 0.55; }
+.btn-royal:active { transform: translateY(0); }
+.btn-royal-glyph {
+  font-size: 1.15em;
+  filter: drop-shadow(0 1px 1px rgba(120, 80, 20, 0.5));
+  animation: royalDie 4.5s var(--ease) infinite;
+}
+@keyframes royalDie {
+  0%, 86%, 100% { transform: rotate(0); }
+  90% { transform: rotate(-18deg); }
+  94% { transform: rotate(14deg); }
+  97% { transform: rotate(-6deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-royal-glyph { animation: none; }
+  .btn-royal::before { transition: none; }
+}
+
 /* ════════ HERO ════════ */
 .hero {
   min-height: 100vh;
@@ -803,12 +875,20 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; t
 
 /* ════════ OYNA — ANA SAYFA PROMO ════════ */
 .play-promo {
+  position: relative;
   display: grid;
   grid-template-columns: 1.25fr 0.85fr;
   border: 1px solid var(--line-soft);
   border-radius: 14px;
   overflow: hidden;
-  background: var(--bg-3);
+  /* AI fantezi-harita arka planı + üstte okunabilirliği koruyan koyu/altın/mor katman */
+  background:
+    radial-gradient(120% 140% at 12% 0%, rgba(216, 180, 90, 0.07), transparent 55%),
+    radial-gradient(130% 150% at 100% 100%, rgba(155, 111, 208, 0.08), transparent 55%),
+    linear-gradient(90deg, rgba(11, 10, 18, 0.85) 0%, rgba(11, 10, 18, 0.55) 45%, rgba(11, 10, 18, 0.4) 100%),
+    linear-gradient(180deg, rgba(11, 10, 18, 0.5), rgba(11, 10, 18, 0.7)),
+    url("/assets/play-bg.webp") 72% center / 125% no-repeat,
+    var(--bg-3);
   transition: border-color 0.3s ease;
 }
 .play-promo:hover { border-color: var(--line); }
@@ -858,6 +938,8 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; t
   width: 100%;
   height: 100%;
   display: block;
+  object-fit: cover;
+  object-position: center;
 }
 @media (max-width: 720px) {
   .play-promo { grid-template-columns: 1fr; }

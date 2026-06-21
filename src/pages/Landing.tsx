@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, useScroll, useSpring, useInView, useReducedMotion } from "framer-motion";
 import DiceArena from "../components/DiceArena";
 import PlayGame from "../components/PlayGame";
-import RpgTablePoster from "../components/RpgTablePoster";
 import Marquee from "../components/Marquee";
 import Magnetic from "../components/Magnetic";
 import { usePageMeta } from "../components/usePageMeta";
@@ -418,13 +417,14 @@ export default function Landing() {
                   <span><b>04</b> Oyna</span>
                 </div>
                 <Magnetic>
-                  <button className="btn" onClick={() => setPlayOpen(true)}>
-                    🎲 Oynamaya Başla
+                  <button className="btn btn-royal" onClick={() => setPlayOpen(true)}>
+                    <span className="btn-royal-glyph" aria-hidden="true">🎲</span>
+                    Oynamaya Başla
                   </button>
                 </Magnetic>
               </div>
               <div className="play-promo-art" aria-hidden="true">
-                <RpgTablePoster />
+                <img className="rpg-poster" src="/assets/play-art.webp" alt="" loading="lazy" />
               </div>
             </div>
           </Reveal>
