@@ -24,11 +24,28 @@
   --body: "Crimson Pro", Georgia, serif;
 
   --wrap: 1080px;
+
+  /* hareket ritmi — tek dil */
+  --t-fast: 140ms;
+  --t: 240ms;
+  --t-slow: 420ms;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* premium kart gölgesi + altın odak halkası */
+  --shadow-card: 0 22px 48px rgba(0, 0, 0, 0.5);
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--gold);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px;
+}
+
+/* klavye odağı — her etkileşimli öğede görünür altın halka */
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+:focus:not(:focus-visible) { outline: none; }
+::selection { background: rgba(216, 180, 90, 0.26); color: var(--gold-soft); }
 
 body {
   background: var(--bg);
@@ -58,7 +75,8 @@ body::before {
 .wrap { width: min(92%, var(--wrap)); margin-inline: auto; }
 
 /* ── ortak tipografi ── */
-h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; text-wrap: balance; }
+.sec-sub, .manifesto-grid p, .coming-sub, .shop p, .cta-sub { text-wrap: pretty; }
 
 .kicker {
   font-family: var(--display);
@@ -185,11 +203,13 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
   background: var(--gold);
   color: var(--bg);
   font-weight: 600;
-  transition: 0.22s;
+  transition: background var(--t) var(--ease), box-shadow var(--t) var(--ease),
+    transform var(--t-fast) var(--ease);
 }
 .btn:hover { background: var(--gold-soft); box-shadow: 0 0 24px rgba(216, 180, 90, 0.22); }
+.btn:active { transform: translateY(1px); }
 .btn.ghost { background: transparent; color: var(--gold); }
-.btn.ghost:hover { background: rgba(216, 180, 90, 0.1); }
+.btn.ghost:hover { background: rgba(216, 180, 90, 0.1); box-shadow: none; }
 
 /* ════════ HERO ════════ */
 .hero {
@@ -304,14 +324,45 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
 }
 
 /* ════════ BÖLÜM (SECTION) DÜZENİ ════════ */
-.section { padding: clamp(72px, 11vw, 130px) 0; position: relative; }
+.section { padding: clamp(72px, 11vw, 130px) 0; position: relative; isolation: isolate; }
 .section.alt { background: var(--bg-2); border-block: 1px solid var(--line-soft); }
+/* her bölümün tepesinde ince altın ışık hattı — sinematik ayraç */
+.section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92%, var(--wrap));
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(216, 180, 90, 0.4), transparent);
+  z-index: -1;
+}
+/* üstten yumuşak mor/altın atmosfer — derinlik */
+.section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(70% 38% at 50% 0%, rgba(155, 111, 208, 0.07), transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
 
 .sec-head {
   display: flex;
-  align-items: baseline;
-  gap: 18px;
+  align-items: center;
+  gap: 16px;
   margin-bottom: 14px;
+}
+/* parlayan altın elmas — bölüm başı süsü */
+.sec-head::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  flex: none;
+  background: var(--gold);
+  transform: rotate(45deg);
+  box-shadow: 0 0 16px rgba(216, 180, 90, 0.55);
 }
 .sec-num {
   font-family: var(--display);
@@ -392,12 +443,16 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   overflow: hidden;
-  transition: background 0.3s ease, border-color 0.3s ease;
+  transition: transform var(--t) var(--ease), background var(--t) var(--ease),
+    border-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
 }
 .serie:hover {
   background: var(--panel);
   border-color: var(--line);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card);
 }
+.serie:active { transform: translateY(-1px); }
 .serie:hover .serie-title { color: var(--gold-soft); }
 /* accent artık kenar çizgisi değil — başlık önünde küçük elmas motifi */
 .serie-title::before {
@@ -563,9 +618,15 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
   border-radius: 8px;
   padding: 24px 22px 26px;
   position: relative;
-  transition: 0.26s;
+  transition: transform var(--t) var(--ease), background var(--t) var(--ease),
+    border-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
 }
-.member:hover { background: var(--panel); border-color: var(--line); }
+.member:hover {
+  background: var(--panel);
+  border-color: var(--line);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card);
+}
 .member:hover .member-name { color: var(--gold-soft); }
 .member-tag {
   display: inline-flex;
@@ -603,12 +664,17 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  margin-top: 8px;
+  border-block: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(216, 180, 90, 0.04), transparent 80%);
 }
 .stat {
   text-align: center;
   padding: 44px 16px;
   border-right: 1px solid var(--line-soft);
+  transition: background var(--t) var(--ease);
 }
+.stat:hover { background: rgba(216, 180, 90, 0.05); }
 .stat:last-child { border-right: none; }
 .stat-n {
   font-family: var(--display);
@@ -651,11 +717,14 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
   border-radius: 8px;
   padding: 34px 30px;
   overflow: hidden;
-  transition: 0.26s;
+  transition: transform var(--t) var(--ease), background var(--t) var(--ease),
+    border-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
 }
 .coming:hover {
   background: var(--panel);
   border-color: var(--line);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card);
 }
 .coming:hover .coming-title { color: var(--gold-soft); }
 .coming-kicker {
