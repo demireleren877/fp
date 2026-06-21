@@ -180,6 +180,18 @@ export default function Landing() {
 
       {/* HERO */}
       <header className="hero" id="top">
+        <video
+          className="hero-video"
+          src="/assets/frp-board.mp4"
+          poster="/assets/frp-board.webp"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          aria-hidden="true"
+        />
+        <div className="hero-video-scrim" aria-hidden="true" />
         <div className="hero-text">
           <motion.div
             className="hero-eyebrow"

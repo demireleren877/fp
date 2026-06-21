@@ -200,6 +200,35 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; }
   gap: 40px;
   padding: 120px clamp(20px, 5vw, 56px) 80px;
   position: relative;
+  overflow: hidden;
+}
+/* hero arka plan videosu (FRP board) + okunabilirlik perdesi */
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.hero-video-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(11, 10, 18, 0.72) 0%, rgba(11, 10, 18, 0.4) 42%, rgba(11, 10, 18, 0.86) 100%),
+    radial-gradient(65% 60% at 22% 42%, rgba(11, 10, 18, 0.55), transparent 70%);
+}
+.hero > .hero-text,
+.hero > .hero-dice-slot {
+  position: relative;
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-video { display: none; }
 }
 .hero-eyebrow {
   display: flex;
