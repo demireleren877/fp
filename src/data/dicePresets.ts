@@ -32,7 +32,10 @@ export type DiceDesign = {
   label: string;
   hint: string;
   themeColor: string;
-  config: Pick<DiceBoxConfig, "scale" | "lightIntensity" | "shadowTransparency" | "enableShadows">;
+  config: Pick<
+    DiceBoxConfig,
+    "scale" | "lightIntensity" | "shadowTransparency" | "enableShadows"
+  >;
 };
 
 export const PHYSICS_PRESETS: DicePhysics[] = [
@@ -122,9 +125,9 @@ export const PHYSICS_PRESETS: DicePhysics[] = [
 export type MatOption = { id: string; label: string; src: string };
 
 export const MATS: readonly MatOption[] = [
+  { id: "hex", label: "Hex Tahta", src: "/assets/mats/hex.svg" },
   { id: "arcane", label: "Büyü Çemberi", src: "/assets/mats/arcane.svg" },
   { id: "spot", label: "Spot", src: "/assets/mats/spot.svg" },
-  { id: "hex", label: "Hex Tahta", src: "/assets/mats/hex.svg" },
   { id: "stone", label: "Taş Tablet", src: "/assets/mats/stone.svg" },
   { id: "classic", label: "Klasik", src: "/assets/dice-mat.svg" },
 ] as const;
@@ -146,11 +149,13 @@ const lsGet = (k: string): string | null => {
 
 /** kaydedilmiş fizik preset'i (yoksa varsayılan) */
 export const savedPhysics = (): DicePhysics =>
-  PHYSICS_PRESETS.find((p) => p.id === lsGet(DICE_KEYS.phys)) ?? PHYSICS_PRESETS[0];
+  PHYSICS_PRESETS.find((p) => p.id === lsGet(DICE_KEYS.phys)) ??
+  PHYSICS_PRESETS[0];
 
 /** kaydedilmiş zar tasarımı (yoksa varsayılan) */
 export const savedDesign = (): DiceDesign =>
-  DESIGN_PRESETS.find((d) => d.id === lsGet(DICE_KEYS.design)) ?? DESIGN_PRESETS[0];
+  DESIGN_PRESETS.find((d) => d.id === lsGet(DICE_KEYS.design)) ??
+  DESIGN_PRESETS[0];
 
 /** kaydedilmiş mat (yoksa varsayılan = Büyü Çemberi) */
 export const savedMat = (): MatOption =>
@@ -162,41 +167,71 @@ export const DESIGN_PRESETS: DiceDesign[] = [
     label: "Altın",
     hint: "Kanalın imza altını — sıcak, parıltılı.",
     themeColor: "#d8b45a",
-    config: { scale: 8, lightIntensity: 1.25, shadowTransparency: 0.55, enableShadows: true },
+    config: {
+      scale: 8,
+      lightIntensity: 1.25,
+      shadowTransparency: 0.55,
+      enableShadows: true,
+    },
   },
   {
     id: "mor",
     label: "Mor Büyü",
     hint: "Büyü çemberi moru; gizemli, soğuk parıltı.",
     themeColor: "#9b6fd0",
-    config: { scale: 8, lightIntensity: 1.4, shadowTransparency: 0.5, enableShadows: true },
+    config: {
+      scale: 8,
+      lightIntensity: 1.4,
+      shadowTransparency: 0.5,
+      enableShadows: true,
+    },
   },
   {
     id: "bordo",
     label: "Bordo Kan",
     hint: "Koyu bordo; ağır gölgeli, tehditkâr.",
     themeColor: "#b23148",
-    config: { scale: 8, lightIntensity: 1.1, shadowTransparency: 0.62, enableShadows: true },
+    config: {
+      scale: 8,
+      lightIntensity: 1.1,
+      shadowTransparency: 0.62,
+      enableShadows: true,
+    },
   },
   {
     id: "obsidyen",
     label: "Obsidyen",
     hint: "Gece karası; sert ışık, derin gölge.",
     themeColor: "#3a3550",
-    config: { scale: 8, lightIntensity: 1.65, shadowTransparency: 0.72, enableShadows: true },
+    config: {
+      scale: 8,
+      lightIntensity: 1.65,
+      shadowTransparency: 0.72,
+      enableShadows: true,
+    },
   },
   {
     id: "kemik",
     label: "Kemik",
     hint: "Fildişi/kemik; eski okul, mat ve sade.",
     themeColor: "#e8e2cf",
-    config: { scale: 8, lightIntensity: 1.2, shadowTransparency: 0.45, enableShadows: true },
+    config: {
+      scale: 8,
+      lightIntensity: 1.2,
+      shadowTransparency: 0.45,
+      enableShadows: true,
+    },
   },
   {
     id: "dev",
     label: "Dev Altın",
     hint: "Aynı altın ama kocaman — sahneyi dolduran zar.",
     themeColor: "#d8b45a",
-    config: { scale: 11, lightIntensity: 1.3, shadowTransparency: 0.55, enableShadows: true },
+    config: {
+      scale: 11,
+      lightIntensity: 1.3,
+      shadowTransparency: 0.55,
+      enableShadows: true,
+    },
   },
 ];
