@@ -126,6 +126,7 @@ export default function Landing() {
   const { series, stats } = useYouTube();
 
   const [playOpen, setPlayOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [active, setActive] = useState(SECTIONS[0].id);
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -175,7 +176,30 @@ export default function Landing() {
             Abone Ol
           </a>
         </div>
+        <button
+          className={`nav-burger ${navOpen ? "open" : ""}`}
+          aria-label="Menü"
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen((o) => !o)}
+        >
+          <span /><span /><span />
+        </button>
       </nav>
+
+      {/* MOBİL MENÜ */}
+      <div
+        className={`nav-mobile ${navOpen ? "open" : ""}`}
+        onClick={() => setNavOpen(false)}
+      >
+        <a href="#hakkimizda">Biz Kimiz</a>
+        <a href="#seriler">Seriler</a>
+        <a href="#kadro">Kadro</a>
+        <a href="#oyna">Oyna</a>
+        <a href="#etkinlikler">Yakında</a>
+        <a href={channel.youtubeUrl} target="_blank" rel="noreferrer" className="nav-sub">
+          Abone Ol
+        </a>
+      </div>
 
       {/* HERO */}
       <header className="hero" id="top">
@@ -189,6 +213,13 @@ export default function Landing() {
           playsInline
           preload="metadata"
           aria-hidden="true"
+        />
+        <img
+          className="hero-img-m"
+          src="/assets/hero-mobile.webp"
+          alt=""
+          aria-hidden="true"
+          loading="eager"
         />
         <div className="hero-video-scrim" aria-hidden="true" />
         <div className="hero-text">
