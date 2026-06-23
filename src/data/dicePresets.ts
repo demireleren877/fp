@@ -157,7 +157,7 @@ export const savedDesign = (): DiceDesign =>
   DESIGN_PRESETS.find((d) => d.id === lsGet(DICE_KEYS.design)) ??
   DESIGN_PRESETS[0];
 
-/** kaydedilmiş mat (yoksa varsayılan = Büyü Çemberi) */
+/** kaydedilmiş mat (yoksa varsayılan = Hex Tahta) */
 export const savedMat = (): MatOption =>
   MATS.find((m) => m.id === lsGet(DICE_KEYS.mat)) ?? MATS[0];
 
