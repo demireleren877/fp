@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from "react";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import type { Series } from "../data/series";
 import GameDice from "./GameDice";
+import World3D, { type WorldBurst } from "./World3D";
+import type { WorldAmb, WorldArt } from "../three/PlayWorld";
 import { GameAudio, type Amb, type AudioMood } from "../audio/GameAudio";
 import {
   scenariosForSeries,
@@ -27,6 +30,7 @@ const prefersReducedMotion = () => {
  * Tam ekran sahne arka planı. Atmosferik döngü videosu varsa onu oynar
  * (poster = statik görsel → boş ekran yok); video yoksa, yüklenemezse ya da
  * kullanıcı azaltılmış hareket istiyorsa statik WebP'ye düşer.
+ * 3D dünya çalışıyorsa kullanılmaz — sahne çizimi WebGL perdesine yansır.
  */
 function SceneBackdrop({ art }: { art: SceneArt }) {
   const [reduce] = useState(prefersReducedMotion);
@@ -69,6 +73,16 @@ const faceOfChar = (c?: { face?: string; role?: string }) => c?.face ?? deriveFa
 
 const NARRATOR = { name: "Anlatıcı", face: "🎲", color: "#caa84e", avatar: "/assets/avatars/narrator.webp" };
 
+/* serinin taban atmosferi — 3D dünyanın paleti buna göre döner */
+const ambOf = (seriesId: string, sc?: Scenario): "forest" | "cyber" =>
+  sc?.ambiance ?? (seriesId === "istanbul-exe" ? "cyber" : "forest");
+
+/** bölümün kapak görseli = çizimi olan ilk sahne */
+const coverOf = (sc: Scenario) => {
+  for (const b of sc.beats) if (b.kind === "scene" && b.art) return b.art.src;
+  return undefined;
+};
+
 function Avatar({
   face,
   color,
@@ -99,6 +113,41 @@ function Avatar({
   );
 }
 
+/**
+ * İmleci takip eden 3D eğim — yalnızca fareyle. Yeniden render etmez; CSS
+ * değişkenlerini (--rx/--ry eğim, --gx/--gy parıltı konumu) doğrudan yazar.
+ */
+function tiltHandlers(max = 12) {
+  return {
+    onPointerMove: (e: RPointerEvent<HTMLElement>) => {
+      if (e.pointerType !== "mouse") return;
+      const el = e.currentTarget;
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width;
+      const y = (e.clientY - r.top) / r.height;
+      el.style.setProperty("--rx", `${((0.5 - y) * max).toFixed(2)}deg`);
+      el.style.setProperty("--ry", `${((x - 0.5) * max).toFixed(2)}deg`);
+      el.style.setProperty("--gx", `${(x * 100).toFixed(1)}%`);
+      el.style.setProperty("--gy", `${(y * 100).toFixed(1)}%`);
+    },
+    onPointerLeave: (e: RPointerEvent<HTMLElement>) => {
+      const el = e.currentTarget;
+      el.style.setProperty("--rx", "0deg");
+      el.style.setProperty("--ry", "0deg");
+    },
+  };
+}
+
+/* kapak görseli yüklenemezse (ör. YouTube erişimi yok) kırık ikon yerine desen */
+function Thumb({ src }: { src?: string }) {
+  const [broken, setBroken] = useState(false);
+  return src && !broken ? (
+    <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} />
+  ) : (
+    <span className="sCard-thumb-ph" />
+  );
+}
+
 export default function PlayGame({
   series,
   open,
@@ -113,6 +162,23 @@ export default function PlayGame({
   const [charId, setCharId] = useState("");
   const [scenario, setScenario] = useState<Scenario | null>(null);
 
+  /* 3D dünya durumu */
+  const [worldOk, setWorldOk] = useState(true);
+  const [accent, setAccent] = useState<string | null>(null);
+  const [kick, setKick] = useState(0);
+  const [burst, setBurst] = useState<WorldBurst>(null);
+  const [atmos, setAtmos] = useState<{ amb: "forest" | "cyber"; mood: Mood; art: WorldArt }>({
+    amb: "forest",
+    mood: "tense",
+    art: null,
+  });
+  const onAtmos = useCallback(
+    (amb: "forest" | "cyber", mood: Mood, art: SceneArt | null) => setAtmos({ amb, mood, art }),
+    []
+  );
+  const onBurst = useCallback((kind: "crit" | "fail") => setBurst({ n: Date.now(), kind }), []);
+  const onWorldFail = useCallback(() => setWorldOk(false), []);
+
   // sayfa açıkken arka planı kilitle + ESC ile çık + tarayıcı "geri" desteği
   useEffect(() => {
     if (!open) return;
@@ -125,6 +191,14 @@ export default function PlayGame({
       window.removeEventListener("keydown", onKey);
     };
   }, [open, onClose]);
+
+  // adım değişince vurgu rengini bırak
+  useEffect(() => setAccent(null), [step]);
+
+  const orderedSeries = useMemo(
+    () => [...series].sort((a, b) => Number(hasScenarios(b.id)) - Number(hasScenarios(a.id))),
+    [series]
+  );
 
   if (!open) return null;
 
@@ -146,189 +220,400 @@ export default function PlayGame({
     const order: Step[] = ["series", "character", "episode", "play"];
     return order.indexOf(s) <= order.indexOf(step);
   };
+  const go = (s: Step) => {
+    setKick((k) => k + 1);
+    setStep(s);
+  };
+
+  const playable = orderedSeries.filter((s) => hasScenarios(s.id));
+  const locked = orderedSeries.filter((s) => !hasScenarios(s.id));
+
+  /* 3D dünyaya giden atmosfer */
+  const worldAmb: WorldAmb =
+    step === "play" ? atmos.amb : seriesId ? ambOf(seriesId, episodes[0]) : "arcane";
+  const worldAccent = step === "play" ? null : accent ?? (seriesId ? activeSeries?.accent ?? null : null);
 
   return (
-    <div className="playpage">
-      {/* ── üst çubuk ── */}
-      <header className="playpage-top">
-        <button
-          className="playpage-back"
-          onClick={() => {
-            if (step === "play") setStep("episode");
-            else if (step === "episode") setStep("character");
-            else if (step === "character") setStep("series");
-            else onClose();
-          }}
-        >
-          ‹ {step === "series" ? "Siteye dön" : "Geri"}
-        </button>
-
-        <nav className="playpage-crumbs" aria-label="Adımlar">
-          {(
-            [
-              ["series", "Seri", activeSeries?.title],
-              ["character", "Karakter", activeChar?.name],
-              ["episode", "Bölüm", scenario ? `Bölüm ${scenario.episode}` : undefined],
-            ] as const
-          ).map(([key, label, value]) => (
-            <span key={key} className={`crumb ${crumb(key) ? "done" : ""} ${step === key ? "now" : ""}`}>
-              <span className="crumb-label">{label}</span>
-              <span className="crumb-value">{value ?? "—"}</span>
-            </span>
-          ))}
-        </nav>
-
-        <button className="playpage-close" onClick={onClose} aria-label="Kapat">
-          ✕
-        </button>
-      </header>
-
-      {/* ── içerik ── */}
-      <main className="playpage-main">
-        {/* 1) SERİ */}
-        {step === "series" && (
-          <div className="pick">
-            <span className="pick-eyebrow">Adım 01 · Seri</span>
-            <h1 className="pick-title">Hangi seriye gireceksin?</h1>
-            <p className="pick-lead">
-              Her seri ayrı bir kampanya. Oynanabilir olanlardan birini seç; sonra o
-              maceradaki bir karakterin gözünden bölümü baştan oyna.
-            </p>
-            <div className="pick-series">
-              {series.map((s) => {
-                const ready = hasScenarios(s.id);
-                return (
-                  <button
-                    key={s.id}
-                    className={`sCard ${ready ? "" : "locked"}`}
-                    style={{ ["--c" as string]: s.accent }}
-                    disabled={!ready}
-                    onClick={() => {
-                      setSeriesId(s.id);
-                      setStep("character");
-                    }}
-                  >
-                    <div className="sCard-thumb">
-                      {s.thumbnail ? (
-                        <img src={s.thumbnail} alt="" loading="lazy" />
-                      ) : (
-                        <div className="sCard-thumb-ph" />
-                      )}
-                      <span className={`sCard-badge ${ready ? "on" : ""}`}>
-                        {ready ? "Oynanabilir" : "Yakında"}
-                      </span>
-                    </div>
-                    <div className="sCard-body">
-                      <span className="sCard-title">{s.title}</span>
-                      <span className="sCard-meta">
-                        {ready ? `${episodesCount(s.id)} oynanabilir bölüm` : `${s.count} bölüm`}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 2) KARAKTER */}
-        {step === "character" && (
-          <div className="pick">
-            <span className="pick-eyebrow">Adım 02 · Karakter</span>
-            <h1 className="pick-title">Kimin gözünden oynayacaksın?</h1>
-            <p className="pick-lead">
-              <b>{activeSeries?.title}</b> masasındaki oyuncular. Birini seç — bölümü onun
-              kararları ve zar atışlarıyla yaşayacaksın.
-            </p>
-            <div className="pick-chars">
-              {roster.map((c) => (
-                <button
-                  key={c.id}
-                  className="cCard"
-                  style={{ ["--c" as string]: charColor(c.id) }}
-                  onClick={() => {
-                    setCharId(c.id);
-                    setStep("episode");
-                  }}
-                >
-                  <Avatar face={faceOf(c.id)} color={charColor(c.id)} img={c.avatar} size={56} />
-                  <span className="cCard-name">{c.name}</span>
-                  {c.role && <span className="cCard-role">{c.role}</span>}
-                  <span className="cCard-player">{c.player}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 3) BÖLÜM */}
-        {step === "episode" && (
-          <div className="pick">
-            <span className="pick-eyebrow">Adım 03 · Bölüm</span>
-            <h1 className="pick-title">Hangi bölümü oynayacaksın?</h1>
-            <p className="pick-lead">
-              <b>{activeChar?.name}</b> olarak oynayacaksın. Bir bölüm seç, senaryoyu sahne
-              sahne yaşa.
-            </p>
-            <div className="pick-eps">
-              {episodes.map((sc) => {
-                const pct = completionPct(sc.id, charId, sc.beats.length);
-                return (
-                  <button
-                    key={sc.id}
-                    className={`eCard ${pct === 100 ? "done" : ""}`}
-                    onClick={() => {
-                      setScenario(sc);
-                      setStep("play");
-                    }}
-                  >
-                    <span className="eCard-no">{String(sc.episode).padStart(2, "0")}</span>
-                    <span className="eCard-body">
-                      <span className="eCard-title">{sc.title}</span>
-                      <span className="eCard-meta">
-                        {sc.beats.length} sahne ·{" "}
-                        {pct === 100 ? "Tamamlandı ✓" : pct > 0 ? `%${pct} oynandı` : "Başlanmadı"}
-                      </span>
-                      <span className="eCard-bar" aria-hidden="true">
-                        <span style={{ width: `${pct}%` }} />
-                      </span>
-                    </span>
-                    {sc.demo && <span className="eCard-demo">Demo</span>}
-                    <span className="eCard-go">
-                      {pct === 100 ? "Tekrar ›" : pct > 0 ? "Devam ›" : "Oyna ›"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 4) OYNA */}
-        {step === "play" && scenario && activeSeries && (
-          <PlayEngine
-            key={scenario.id}
-            scenario={scenario}
-            series={activeSeries}
-            charId={charId}
-            next={nextOf(scenario)}
-            onExit={() => setStep("episode")}
-            onReplay={() => setScenario({ ...scenario })}
-            onNext={(sc) => setScenario(sc)}
+    <MotionConfig reducedMotion="user">
+      <div className={`playpage ${worldOk ? "has-3d" : ""}`} data-step={step} data-amb={worldAmb}>
+        {worldOk && (
+          <World3D
+            step={step}
+            amb={worldAmb}
+            mood={step === "play" ? (atmos.mood as AudioMood) : "tense"}
+            art={step === "play" ? atmos.art : null}
+            accent={worldAccent}
+            kick={kick}
+            burst={burst}
+            onFail={onWorldFail}
           />
         )}
-      </main>
-    </div>
+
+        {/* ── üst çubuk ── */}
+        <header className="playpage-top">
+          <button
+            className="playpage-back"
+            onClick={() => {
+              if (step === "play") go("episode");
+              else if (step === "episode") go("character");
+              else if (step === "character") go("series");
+              else onClose();
+            }}
+          >
+            ‹ {step === "series" ? "Siteye dön" : "Geri"}
+          </button>
+
+          <nav className="playpage-crumbs" aria-label="Adımlar">
+            {(
+              [
+                ["series", "Seri", activeSeries?.title],
+                ["character", "Karakter", activeChar?.name],
+                ["episode", "Bölüm", scenario ? `Bölüm ${scenario.episode}` : undefined],
+              ] as const
+            ).map(([key, label, value], i) => (
+              <span key={key} className={`crumb ${crumb(key) ? "done" : ""} ${step === key ? "now" : ""}`}>
+                <span className="crumb-rune" aria-hidden="true">
+                  {["I", "II", "III"][i]}
+                </span>
+                <span className="crumb-text">
+                  <span className="crumb-label">{label}</span>
+                  <span className="crumb-value">{value ?? "—"}</span>
+                </span>
+              </span>
+            ))}
+          </nav>
+
+          <button className="playpage-close" onClick={onClose} aria-label="Kapat">
+            ✕
+          </button>
+        </header>
+
+        {/* ── içerik ── */}
+        <main className="playpage-main">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={step === "play" ? `play-${scenario?.id}` : step}
+              className={`step-wrap ${step === "play" ? "is-play" : ""}`}
+              initial={{ opacity: 0, rotateX: 10, y: 40, scale: 0.96 }}
+              animate={{ opacity: 1, rotateX: 0, y: 0, scale: 1 }}
+              exit={{ opacity: 0, rotateX: -8, y: -30, scale: 0.97, transition: { duration: 0.22 } }}
+              transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1] }}
+            >
+              {/* 1) SERİ */}
+              {step === "series" && (
+                <div className="pick pick--series">
+                  <div className="pick-head">
+                    <span className="pick-eyebrow">Adım 01 · Seri</span>
+                    <h1 className="pick-title">
+                      Hangi dünyaya
+                      <br />
+                      <em>adım atacaksın?</em>
+                    </h1>
+                    <p className="pick-lead">
+                      Her seri ayrı bir kampanya. Oynanabilir olanlardan birini seç; sonra o
+                      maceradaki bir karakterin gözünden bölümü baştan oyna.
+                    </p>
+                  </div>
+
+                  <div className="pick-series">
+                    {playable.map((s, i) => (
+                      <button
+                        key={s.id}
+                        className="sCard tilt"
+                        style={{ ["--c" as string]: s.accent, ["--i" as string]: i }}
+                        {...tiltHandlers(14)}
+                        onMouseEnter={() => setAccent(s.accent)}
+                        onMouseLeave={() => setAccent(null)}
+                        onFocus={() => setAccent(s.accent)}
+                        onBlur={() => setAccent(null)}
+                        onClick={() => {
+                          setSeriesId(s.id);
+                          go("character");
+                        }}
+                      >
+                        <span className="tilt-body">
+                          <span className="sCard-thumb">
+                            <Thumb src={s.thumbnail} />
+                            <span className="sCard-shade" />
+                          </span>
+                          <span className="sCard-badge on">
+                            <i /> Oynanabilir
+                          </span>
+                          <span className="sCard-body">
+                            <span className="sCard-title">{s.title}</span>
+                            <span className="sCard-meta">
+                              {scenariosForSeries(s.id).length} oynanabilir bölüm · {s.count} video
+                            </span>
+                          </span>
+                          <span className="sCard-enter">Gir ›</span>
+                          <span className="tilt-glare" />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {locked.length > 0 && (
+                    <>
+                      <span className="pick-sub">Yakında açılacak diyarlar</span>
+                      <div className="pick-locked">
+                        {locked.map((s) => (
+                          <div key={s.id} className="sLock" style={{ ["--c" as string]: s.accent }}>
+                            <span className="sLock-thumb">
+                              <Thumb src={s.thumbnail} />
+                            </span>
+                            <span className="sLock-body">
+                              <span className="sLock-title">{s.title}</span>
+                              <span className="sLock-meta">{s.count} bölüm · yakında</span>
+                            </span>
+                            <span className="sLock-seal" aria-hidden="true">
+                              🔒
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* 2) KARAKTER */}
+              {step === "character" && (
+                <div className="pick pick--chars">
+                  <div className="pick-head center">
+                    <span className="pick-eyebrow">Adım 02 · Karakter</span>
+                    <h1 className="pick-title">Kimin gözünden oynayacaksın?</h1>
+                    <p className="pick-lead">
+                      <b>{activeSeries?.title}</b> masasındaki oyuncular. Birini seç — bölümü onun
+                      kararları ve zar atışlarıyla yaşayacaksın.
+                    </p>
+                  </div>
+                  <CharCarousel
+                    roster={roster}
+                    colorOf={charColor}
+                    faceOf={faceOf}
+                    onActive={(c) => setAccent(charColor(c.id))}
+                    onPick={(c) => {
+                      setCharId(c.id);
+                      go("episode");
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* 3) BÖLÜM */}
+              {step === "episode" && (
+                <div className="pick pick--eps">
+                  <div className="pick-head">
+                    <span className="pick-eyebrow">Adım 03 · Bölüm</span>
+                    <h1 className="pick-title">Hangi bölümü oynayacaksın?</h1>
+                    <p className="pick-lead">
+                      <b>{activeChar?.name}</b> olarak oynayacaksın. Bir bölüm seç, senaryoyu sahne
+                      sahne yaşa.
+                    </p>
+                  </div>
+                  <div className="pick-eps">
+                    {episodes.map((sc, i) => {
+                      const pct = completionPct(sc.id, charId, sc.beats.length);
+                      const cover = coverOf(sc);
+                      return (
+                        <button
+                          key={sc.id}
+                          className={`eCard tilt ${pct === 100 ? "done" : ""}`}
+                          style={{ ["--i" as string]: i }}
+                          {...tiltHandlers(6)}
+                          onClick={() => {
+                            setScenario(sc);
+                            go("play");
+                          }}
+                        >
+                          <span className="tilt-body">
+                            {cover && (
+                              <span className="eCard-cover" aria-hidden="true">
+                                <img src={cover} alt="" loading="lazy" />
+                              </span>
+                            )}
+                            <span className="eCard-no">{String(sc.episode).padStart(2, "0")}</span>
+                            <span className="eCard-body">
+                              <span className="eCard-title">{sc.title}</span>
+                              <span className="eCard-meta">
+                                {sc.beats.length} sahne ·{" "}
+                                {pct === 100 ? "Tamamlandı ✓" : pct > 0 ? `%${pct} oynandı` : "Başlanmadı"}
+                              </span>
+                              <span className="eCard-bar" aria-hidden="true">
+                                <span style={{ width: `${pct}%` }} />
+                              </span>
+                            </span>
+                            {sc.demo && <span className="eCard-demo">Demo</span>}
+                            <span className="eCard-go">
+                              {pct === 100 ? "Tekrar ›" : pct > 0 ? "Devam ›" : "Oyna ›"}
+                            </span>
+                            <span className="tilt-glare" />
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 4) OYNA */}
+              {step === "play" && scenario && activeSeries && (
+                <PlayEngine
+                  key={scenario.id}
+                  scenario={scenario}
+                  series={activeSeries}
+                  charId={charId}
+                  next={nextOf(scenario)}
+                  has3d={worldOk}
+                  onAtmos={onAtmos}
+                  onBurst={onBurst}
+                  onExit={() => go("episode")}
+                  onReplay={() => setScenario({ ...scenario })}
+                  onNext={(sc) => setScenario(sc)}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+    </MotionConfig>
   );
 
-  function episodesCount(id: string) {
-    return scenariosForSeries(id).length;
-  }
   /* aynı serideki bir sonraki bölüm (varsa) */
   function nextOf(sc: Scenario): Scenario | null {
     const i = episodes.findIndex((e) => e.id === sc.id);
     return i >= 0 && i + 1 < episodes.length ? episodes[i + 1] : null;
   }
+}
+
+/* ════════ KARAKTER SEÇİMİ — 3D kapak akışı (coverflow) ════════ */
+
+function CharCarousel({
+  roster,
+  colorOf,
+  faceOf,
+  onActive,
+  onPick,
+}: {
+  roster: PlayCharacter[];
+  colorOf: (id: string) => string;
+  faceOf: (id: string) => string;
+  onActive: (c: PlayCharacter) => void;
+  onPick: (c: PlayCharacter) => void;
+}) {
+  const [active, setActive] = useState(() => Math.floor((roster.length - 1) / 2));
+  const drag = useRef<{ x: number; id: number } | null>(null);
+  const current = roster[active];
+
+  useEffect(() => {
+    if (current) onActive(current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  const move = (d: number) => setActive((a) => Math.max(0, Math.min(roster.length - 1, a + d)));
+
+  if (!current) return null;
+  return (
+    <div
+      className="cf"
+      tabIndex={0}
+      role="listbox"
+      aria-label="Karakterler — ok tuşlarıyla gez, Enter ile seç"
+      aria-activedescendant={`cf-${current.id}`}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") move(-1);
+        else if (e.key === "ArrowRight") move(1);
+        else if (e.key === "Enter") onPick(current);
+        else return;
+        e.preventDefault();
+      }}
+      onPointerDown={(e) => (drag.current = { x: e.clientX, id: e.pointerId })}
+      onPointerUp={(e) => {
+        const d = drag.current;
+        drag.current = null;
+        if (!d || d.id !== e.pointerId) return;
+        const dx = e.clientX - d.x;
+        if (Math.abs(dx) > 40) move(dx < 0 ? 1 : -1);
+      }}
+    >
+      <div className="cf-stage">
+        <div className="cf-floor" aria-hidden="true" />
+        {roster.map((c, i) => {
+          const d = i - active;
+          const col = colorOf(c.id);
+          return (
+            <button
+              key={c.id}
+              id={`cf-${c.id}`}
+              role="option"
+              aria-selected={d === 0}
+              className={`cf-card tilt ${d === 0 ? "is-active" : ""}`}
+              style={{
+                ["--d" as string]: d,
+                ["--ad" as string]: Math.abs(d),
+                ["--c" as string]: col,
+                zIndex: 20 - Math.abs(d),
+              }}
+              tabIndex={-1}
+              onClick={() => (d === 0 ? onPick(c) : setActive(i))}
+              {...(d === 0 ? tiltHandlers(16) : {})}
+            >
+              <span className="tilt-body">
+                <span className="cf-art">
+                  {c.avatar ? (
+                    <CharPortrait src={c.avatar} face={faceOf(c.id)} />
+                  ) : (
+                    <span className="cf-face">{faceOf(c.id)}</span>
+                  )}
+                </span>
+                <span className="cf-corner tl" />
+                <span className="cf-corner tr" />
+                <span className="cf-corner bl" />
+                <span className="cf-corner br" />
+                <span className="cf-info">
+                  {c.role && <span className="cf-role">{c.role}</span>}
+                  <span className="cf-name">{c.name}</span>
+                  <span className="cf-player">oynayan · {c.player}</span>
+                </span>
+                <span className="tilt-glare" />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="cf-nav">
+        <button className="cf-arrow" onClick={() => move(-1)} disabled={active === 0} aria-label="Önceki karakter">
+          ‹
+        </button>
+        <div className="cf-dots" aria-hidden="true">
+          {roster.map((c, i) => (
+            <span key={c.id} className={i === active ? "on" : ""} style={{ ["--c" as string]: colorOf(c.id) }} />
+          ))}
+        </div>
+        <button
+          className="cf-arrow"
+          onClick={() => move(1)}
+          disabled={active === roster.length - 1}
+          aria-label="Sonraki karakter"
+        >
+          ›
+        </button>
+      </div>
+      <button className="btn btn-royal cf-cta" onClick={() => onPick(current)}>
+        <span>{current.name} olarak oyna</span>
+      </button>
+    </div>
+  );
+}
+
+function CharPortrait({ src, face }: { src: string; face: string }) {
+  const [broken, setBroken] = useState(false);
+  return broken ? (
+    <span className="cf-face">{face}</span>
+  ) : (
+    <img src={src} alt="" draggable={false} onError={() => setBroken(true)} />
+  );
 }
 
 /* ════════ SENARYO MOTORU — akan sohbet / actual-play günlüğü ════════ */
@@ -433,6 +718,9 @@ function PlayEngine({
   series,
   charId,
   next,
+  has3d,
+  onAtmos,
+  onBurst,
   onExit,
   onReplay,
   onNext,
@@ -441,6 +729,9 @@ function PlayEngine({
   series: Series;
   charId: string;
   next: Scenario | null;
+  has3d: boolean;
+  onAtmos: (amb: "forest" | "cyber", mood: Mood, art: SceneArt | null) => void;
+  onBurst: (kind: "crit" | "fail") => void;
   onExit: () => void;
   onReplay: () => void;
   onNext: (sc: Scenario) => void;
@@ -486,7 +777,7 @@ function PlayEngine({
   const progress = Math.round((cursor / beats.length) * 100);
 
   /* taban atmosfer (orman / cyber) — seriden türetilir */
-  const ambiance = scenario.ambiance ?? (scenario.seriesId === "istanbul-exe" ? "cyber" : "forest");
+  const ambiance = ambOf(scenario.seriesId, scenario);
   /* anlatıcı — hikayeye özel portre varsa onu kullan, yoksa genel anlatıcı */
   const narrator = scenario.narratorAvatar ? { ...NARRATOR, avatar: scenario.narratorAvatar } : NARRATOR;
   /* o anki ruh hali = imleçteki/öncesindeki en yakın sahnenin mood'u */
@@ -526,6 +817,9 @@ function PlayEngine({
     }
     return null;
   }, [cursor, beats]);
+
+  /* 3D dünyaya atmosferi bildir (palet, ruh hali, sahne çizimi) */
+  useEffect(() => onAtmos(ambiance, mood, sceneArt), [ambiance, mood, sceneArt, onAtmos]);
 
   /* imleçe kadar geçilmiş anlatımlardan toplanan ipuçları/eşyalar */
   const clues = useMemo<Clue[]>(() => {
@@ -711,21 +1005,23 @@ function PlayEngine({
   return (
     <div className="vn" data-amb={ambiance} data-mood={mood}>
       {/* sahne backdrop'u — çizim varsa tam ekran, yoksa prosedürel atmosfer */}
-      {sceneArt && <SceneBackdrop art={sceneArt} key={sceneArt.src} />}
-      {/* atmosfer katmanları */}
-      <div className="vn-fog" aria-hidden="true" />
-      <div className="vn-embers" aria-hidden="true">
-        {EMBERS.map((_, i) => (
-          <span
-            key={i}
-            style={{
-              ["--x" as string]: `${(i * 61) % 100}%`,
-              ["--d" as string]: `${((i * 1.7) % 8).toFixed(2)}s`,
-              ["--s" as string]: `${7 + (i % 5) * 1.6}s`,
-            }}
-          />
-        ))}
-      </div>
+      {!has3d && sceneArt && <SceneBackdrop art={sceneArt} key={sceneArt.src} />}
+      {/* atmosfer katmanları — 3D dünya yoksa CSS yedeği */}
+      {!has3d && <div className="vn-fog" aria-hidden="true" />}
+      {!has3d && (
+        <div className="vn-embers" aria-hidden="true">
+          {EMBERS.map((_, i) => (
+            <span
+              key={i}
+              style={{
+                ["--x" as string]: `${(i * 61) % 100}%`,
+                ["--d" as string]: `${((i * 1.7) % 8).toFixed(2)}s`,
+                ["--s" as string]: `${7 + (i % 5) * 1.6}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
       <div className="vn-vignette" aria-hidden="true" />
 
       {/* sinematik sahne perdesi — her yeni sahnede bir kez kararıp açılır */}
@@ -974,9 +1270,11 @@ function PlayEngine({
                   const text = `Zar ${v} (hedef ${myRoll.dc}) — ${ok ? myRoll.success : myRoll.failure}`;
                   if (v === 20) {
                     setFlash({ n: Date.now(), cls: "crit" });
+                    onBurst("crit");
                     audio?.stinger("stinger-crit", 0.6);
                   } else if (v === 1) {
                     setFlash({ n: Date.now(), cls: "fail" });
+                    onBurst("fail");
                     audio?.stinger("stinger-fail", 0.6);
                   }
                   setTimeout(() => {
