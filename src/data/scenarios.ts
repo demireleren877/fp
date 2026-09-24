@@ -64,6 +64,8 @@ export interface PlayCharacter {
   avatar?: string;
   /** NPC (anlatıcının seslendirdiği yan karakter) — karakter seçiminde çıkmaz */
   npc?: boolean;
+  /** 3D tavernada masaya oturan model (KayKit maceracıları); verilmezse sırayla atanır */
+  model?: "knight" | "barbarian" | "mage" | "rogue" | "rogue_hooded";
 }
 
 export interface Scenario {
@@ -88,10 +90,10 @@ export const scenarios: Scenario[] = [
     title: "Sislerin Eşiği",
     demo: true,
     characters: [
-      { id: "gm", name: "Anlatıcı", player: "Soykan Soner", role: "Oyun Yöneticisi", face: "🎲" },
-      { id: "can", name: "Can'ın Karakteri", player: "Can Girgin", role: "Savaşçı", face: "⚔️" },
-      { id: "okan", name: "Okan'ın Karakteri", player: "Okan Asman", role: "Hırsız", face: "🗡️" },
-      { id: "ozge", name: "Özge'nin Karakteri", player: "Özge Özel", role: "Büyücü", face: "🧙" },
+      { id: "gm", name: "Anlatıcı", player: "Soykan Soner", role: "Oyun Yöneticisi", face: "🎲", model: "barbarian" },
+      { id: "can", name: "Can'ın Karakteri", player: "Can Girgin", role: "Savaşçı", face: "⚔️", model: "knight" },
+      { id: "okan", name: "Okan'ın Karakteri", player: "Okan Asman", role: "Hırsız", face: "🗡️", model: "rogue" },
+      { id: "ozge", name: "Özge'nin Karakteri", player: "Özge Özel", role: "Büyücü", face: "🧙", model: "mage" },
     ],
     beats: [
       { kind: "scene", title: "Gölge Orman'ın eşiği", subtitle: "Gün batımı", mood: "wonder" },
@@ -147,10 +149,10 @@ export const scenarios: Scenario[] = [
     title: "Rüya Departmanı · 1. Kısım",
     narratorAvatar: "/assets/avatars/istanbul-exe/narrator.webp",
     characters: [
-      { id: "gm", name: "Anlatıcı", player: "Soykan Söner", role: "Oyun Yöneticisi", face: "🎲" },
-      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮", avatar: "/assets/avatars/istanbul-exe/rosie.webp" },
-      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻", avatar: "/assets/avatars/istanbul-exe/leo.webp" },
-      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️", avatar: "/assets/avatars/istanbul-exe/tahir.webp" },
+      { id: "gm", name: "Anlatıcı", player: "Soykan Söner", role: "Oyun Yöneticisi", face: "🎲", model: "barbarian" },
+      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮", avatar: "/assets/avatars/istanbul-exe/rosie.webp", model: "mage" },
+      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻", avatar: "/assets/avatars/istanbul-exe/leo.webp", model: "rogue_hooded" },
+      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️", avatar: "/assets/avatars/istanbul-exe/tahir.webp", model: "knight" },
       { id: "marek", name: "Marek", player: "Soykan Söner", role: "Departman Amiri", face: "🧛", avatar: "/assets/avatars/istanbul-exe/marek.webp", npc: true },
       { id: "parker", name: "Parker", player: "Soykan Söner", role: "Müşteri · 47", face: "🥱", avatar: "/assets/avatars/istanbul-exe/parker.webp", npc: true },
       { id: "selim", name: "Selim", player: "Soykan Söner", role: "Parker'ın Avukatı", face: "👔", avatar: "/assets/avatars/istanbul-exe/selim.webp", npc: true },
@@ -320,10 +322,10 @@ export const scenarios: Scenario[] = [
     title: "Galata'nın Kabusu · 2. Kısım",
     narratorAvatar: "/assets/avatars/istanbul-exe/narrator.webp",
     characters: [
-      { id: "gm", name: "Anlatıcı", player: "Soykan Söner", role: "Oyun Yöneticisi", face: "🎲" },
-      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮", avatar: "/assets/avatars/istanbul-exe/rosie.webp" },
-      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻", avatar: "/assets/avatars/istanbul-exe/leo.webp" },
-      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️", avatar: "/assets/avatars/istanbul-exe/tahir.webp" },
+      { id: "gm", name: "Anlatıcı", player: "Soykan Söner", role: "Oyun Yöneticisi", face: "🎲", model: "barbarian" },
+      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮", avatar: "/assets/avatars/istanbul-exe/rosie.webp", model: "mage" },
+      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻", avatar: "/assets/avatars/istanbul-exe/leo.webp", model: "rogue_hooded" },
+      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️", avatar: "/assets/avatars/istanbul-exe/tahir.webp", model: "knight" },
       { id: "melis", name: "Melis", player: "Soykan Söner", role: "Sibernetik · 24", face: "🦾", avatar: "/assets/avatars/istanbul-exe/melis.webp", npc: true },
     ],
     beats: [
@@ -486,10 +488,10 @@ export const scenarios: Scenario[] = [
     title: "Kapalı Çarşı · 1. Kısım",
     narratorAvatar: "/assets/avatars/istanbul-exe/narrator.webp",
     characters: [
-      { id: "gm", name: "Anlatıcı", player: "Soykan Söner", role: "Oyun Yöneticisi", face: "🎲" },
-      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮", avatar: "/assets/avatars/istanbul-exe/rosie.webp" },
-      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻", avatar: "/assets/avatars/istanbul-exe/leo.webp" },
-      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️", avatar: "/assets/avatars/istanbul-exe/tahir.webp" },
+      { id: "gm", name: "Anlatıcı", player: "Soykan Söner", role: "Oyun Yöneticisi", face: "🎲", model: "barbarian" },
+      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮", avatar: "/assets/avatars/istanbul-exe/rosie.webp", model: "mage" },
+      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻", avatar: "/assets/avatars/istanbul-exe/leo.webp", model: "rogue_hooded" },
+      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️", avatar: "/assets/avatars/istanbul-exe/tahir.webp", model: "knight" },
       { id: "marek", name: "Marek", player: "Soykan Söner", role: "Departman Amiri", face: "🧛", avatar: "/assets/avatars/istanbul-exe/marek.webp", npc: true },
       { id: "hulya", name: "Hülya", player: "Soykan Söner", role: "Rüya Kafesi Sahibi", face: "🫖", avatar: "/assets/avatars/istanbul-exe/hulya.webp", npc: true },
     ],
@@ -630,10 +632,10 @@ export const scenarios: Scenario[] = [
     title: "Katip Kitapları · 2. Kısım",
     narratorAvatar: "/assets/avatars/istanbul-exe/narrator.webp",
     characters: [
-      { id: "gm", name: "Anlatıcı", player: "Soykan Söner", role: "Oyun Yöneticisi", face: "🎲" },
-      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮", avatar: "/assets/avatars/istanbul-exe/rosie.webp" },
-      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻", avatar: "/assets/avatars/istanbul-exe/leo.webp" },
-      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️", avatar: "/assets/avatars/istanbul-exe/tahir.webp" },
+      { id: "gm", name: "Anlatıcı", player: "Soykan Söner", role: "Oyun Yöneticisi", face: "🎲", model: "barbarian" },
+      { id: "ozge", name: "Rosie", player: "Özge Özel", role: "Empat · Metin Yazarı", face: "🔮", avatar: "/assets/avatars/istanbul-exe/rosie.webp", model: "mage" },
+      { id: "can", name: "Leo", player: "Can Girgin", role: "Hacker (19)", face: "💻", avatar: "/assets/avatars/istanbul-exe/leo.webp", model: "rogue_hooded" },
+      { id: "okan", name: "Tahir", player: "Okan Asman", role: "Eski Kolluk · Pazarlamacı (35)", face: "🕶️", avatar: "/assets/avatars/istanbul-exe/tahir.webp", model: "knight" },
       { id: "nikolay", name: "Nikolay", player: "Soykan Söner", role: "Antikacı · Katip Kitapları", face: "📜", avatar: "/assets/avatars/istanbul-exe/nikolay.webp", npc: true },
     ],
     beats: [

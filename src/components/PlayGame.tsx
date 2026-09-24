@@ -1014,6 +1014,7 @@ function PlayEngine({
           color: charColor(c.id),
           avatar: c.id === "gm" ? narrator.avatar : c.avatar,
           face: faceOfChar(c),
+          model: c.model,
           isGm: c.id === "gm",
           isMe: c.id === charId,
         }))
@@ -1038,8 +1039,11 @@ function PlayEngine({
       } else id = b.who;
     } else if (b.kind === "choice" || b.kind === "roll") id = b.actor === charId ? "gm" : b.actor;
     world.setSpeaker(id, npc);
+    // yeni sahne açılırken kamera anlatıcının arkasındaki büyü aynasına döner
+    world.setShot(b.kind === "scene" ? "mirror" : "table");
     // başka bir oyuncunun videodaki gerçek zarı → kendi koltuğundan masaya atılır
-    if (b.kind === "roll" && b.actor !== charId && b.canonRoll != null) world.rollDie(b.canonRoll, b.actor);
+    if (b.kind === "roll" && b.actor !== charId && b.canonRoll != null)
+      world.rollDie(b.canonRoll, b.actor, b.canonSuccess !== false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [world, cursor, finished, offerResume]);
 
@@ -1319,7 +1323,7 @@ function PlayEngine({
               style={{ ["--ac" as string]: liveSay.me ? "var(--gold)" : liveSay.color }}
               onClick={() => plainAdvance && (tw.done ? advance() : tw.skip())}
             >
-              <Avatar face={liveSay.face} color={liveSay.color} img={liveSay.avatar} me={liveSay.me} size={68} />
+              <Avatar face={liveSay.face} color={liveSay.color} img={liveSay.avatar} me={liveSay.me} size={56} />
               <div className="tm-dialog-body">
                 <span className="tm-dialog-name">
                   {liveSay.name}
@@ -1334,6 +1338,11 @@ function PlayEngine({
                   {tw.shown}
                   {!tw.done && <span className="vn-caret" />}
                 </p>
+                {plainAdvance && (
+                  <span className="tm-dialog-next" aria-hidden="true">
+                    {tw.done ? "devam ▸" : "atla »"}
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -1387,8 +1396,8 @@ function PlayEngine({
         </div>
       )}
 
-      {/* alt aksiyon çubuğu — sıra sende olduğunda */}
-      <div className="vn-bar">
+      {/* alt aksiyon çubuğu — sıra sende olduğunda (masa modunda düz ilerleme diyalogda) */}
+      <div className={`vn-bar ${table && plainAdvance && liveSay ? "is-compact" : ""}`}>
         {finished ? (
           <div className="vn-bar-end">
             {next && (
@@ -1432,7 +1441,7 @@ function PlayEngine({
                 dc={myRoll.dc}
                 onRoll={async () => {
                   const v = randomD20();
-                  await world.rollDie(v, charId);
+                  await world.rollDie(v, charId, v >= myRoll.dc);
                   resolveMyRoll(v, myRoll.dc, myRoll.success, myRoll.failure);
                   return v;
                 }}

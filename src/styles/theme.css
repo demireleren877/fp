@@ -2363,10 +2363,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; t
   flex: none;
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  width: min(94%, 900px);
-  margin: 0 auto 12px;
-  padding: 16px 22px 18px 18px;
+  gap: 14px;
+  width: min(94%, 880px);
+  margin: 0 auto clamp(10px, 2.2vh, 20px);
+  padding: 13px 20px 12px 14px;
   border-radius: 20px;
   background:
     linear-gradient(180deg, rgba(20, 16, 36, 0.86), rgba(8, 7, 15, 0.92));
@@ -2418,14 +2418,36 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; t
   color: var(--muted);
 }
 .tm-dialog-text {
-  font-size: clamp(1.02rem, 1.8vw, 1.18rem);
-  line-height: 1.6;
+  font-size: clamp(0.98rem, 1.6vw, 1.1rem);
+  line-height: 1.55;
   color: var(--text);
   max-height: 34vh;
   overflow-y: auto;
 }
 .tm-dialog-art { margin: 2px 0 4px; border-radius: 12px; overflow: hidden; max-width: 360px; border: 1px solid var(--glass-line); }
 .tm-dialog-art img { width: 100%; max-height: 22vh; object-fit: cover; }
+
+.tm-dialog-next {
+  align-self: flex-end;
+  font-family: var(--display);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ac, var(--gold)) 75%, white 25%);
+  opacity: 0.8;
+  animation: tmNext 1.4s ease-in-out infinite;
+}
+@keyframes tmNext { 50% { opacity: 0.35; transform: translateX(3px); } }
+/* düz ilerlemede alt çubuk gizlenir (ekran okuyucular ve klavye için düğme yerinde kalır) */
+.vn-bar.is-compact {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
 
 /* masaya zar at */
 .tm-roll { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 4px 0; }

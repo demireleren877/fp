@@ -1,0 +1,10 @@
+Taverna 3D varlıkları — KayKit (Kay Lousberg, www.kaylousberg.com)
+
+- KayKit : Adventurers Character Pack 1.0  (knight, barbarian, mage, rogue, rogue_hooded, anims)
+- KayKit : Dungeon Remastered 1.0          (tavern.glb içindeki oda eşyaları)
+
+Lisans: Creative Commons Zero (CC0) — http://creativecommons.org/publicdomain/zero/1.0/
+Kişisel, eğitim ve ticari projelerde serbestçe kullanılabilir. Atıf zorunlu değildir.
+
+Dosyalar scripts/build-tavern-assets.mjs ile web için sıkıştırılmıştır
+(silahlar ayıklanmış, animasyonlar tek dosyada, meshopt + WebP).
