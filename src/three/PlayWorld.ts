@@ -1,8 +1,12 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { TableScene, TABLE_Y, type Seat, type NpcCard } from "./Table";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { TavernScene, TABLE_Y, MIRROR, type Seat, type NpcCard, type Shot } from "./Tavern";
 
-export type { Seat, NpcCard };
+export type { Seat, NpcCard, Shot };
 
 /**
  * "Oyna" modunun 3D dünyası — tek bir WebGL sahnesi, tüm adımlar boyunca yaşar.
@@ -45,7 +49,7 @@ const RIG: Record<WorldStep, Rig> = {
   character: { d20: [4.4, 1.7, -3.5], s: 0.7, circle: 0.7, art: 0, cam: [0, -0.3, 8], look: [0, 0, 0], fog: 0.55 },
   episode: { d20: [3.5, -0.3, -1.2], s: 1.05, circle: 1, art: 0, cam: [0.5, 0.25, 8], look: [0, 0, 0], fog: 0.5 },
   // oyun: oyuncunun koltuğundan masaya bakış — arkada sahne vizyonu
-  play: { d20: [0, 0.6, -22], s: 0.001, circle: 0.45, art: 1, cam: [0, 2.75, 4.95], look: [0, 1.95, -3], fog: 0 },
+  play: { d20: [0, 0.6, -22], s: 0.001, circle: 0, art: 1, cam: [0.95, 3.95, 8.1], look: [0.1, 1.95, -2.4], fog: 0 },
 };
 
 /* ── ortak GLSL parçaları ── */
@@ -107,7 +111,13 @@ export class PlayWorld {
   private dieW = 0;
   private speakW = 0;
   private focusPos = new THREE.Vector3(0, TABLE_Y, 0);
-  private table!: TableScene;
+  private table!: TavernScene;
+  private mirrorW = 0;
+  private lensShift = 0;
+  private artHasCur = 0;
+  private composer: EffectComposer;
+  private bloom: UnrealBloomPass;
+  private roomFog = new THREE.FogExp2(0x0a0710, 0);
   private camLook = new THREE.Vector3();
 
   /* nesneler */
@@ -169,13 +179,21 @@ export class PlayWorld {
     this.buildMotes();
     this.buildBurst();
     this.buildLights();
-    this.table = new TableScene({
+    this.table = new TavernScene({
       shadows: !this.small,
       dieGeo: this.die.geometry,
       dieMat: this.die.material,
       glowTex: (this.glow.material as THREE.SpriteMaterial).map!,
     });
     this.scene.add(this.table.group);
+    this.scene.fog = this.roomFog;
+
+    /* son işlem: yumuşak parlama (alevler, rakamlar, ayna) */
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.55, 0.78);
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
 
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(el);
@@ -183,6 +201,7 @@ export class PlayWorld {
     window.addEventListener("pointermove", this.onPointer, { passive: true });
     window.addEventListener("deviceorientation", this.onTilt, { passive: true });
     this.raf = requestAnimationFrame(this.frame);
+    if (import.meta.env.DEV) (window as unknown as { __world?: PlayWorld }).__world = this;
   }
 
   /* ════════ genel API ════════ */
@@ -228,8 +247,12 @@ export class PlayWorld {
     this.table.setSpeaker(id, npc);
   }
   /** D20'yi `from` koltuğundan masaya at; istenen değer yukarı bakarak durur */
-  rollDie(value: number, from: string): Promise<void> {
-    return this.table.roll(value, from).then(() => undefined);
+  rollDie(value: number, from: string, ok?: boolean): Promise<void> {
+    return this.table.roll(value, from, ok).then(() => undefined);
+  }
+  /** kadraj: masa ya da (yeni sahne açılırken) büyü aynası */
+  setShot(shot: Shot) {
+    this.table.setShot(shot);
   }
 
   setArt(art: WorldArt) {
@@ -295,7 +318,9 @@ export class PlayWorld {
     const w = this.el.clientWidth || innerWidth;
     const h = this.el.clientHeight || innerHeight;
     this.renderer.setSize(w, h, false);
+    this.composer?.setSize(w, h);
     this.camera.aspect = w / h;
+    this.lensShift = -1; // görünüm ofsetini yeni boyuta göre yeniden kur
     this.camera.updateProjectionMatrix();
     this.nebula.uniforms.uAspect.value = w / h;
     this.fitArt();
@@ -307,7 +332,9 @@ export class PlayWorld {
       this.clock.last = now;
       return;
     }
-    const dt = Math.min(0.05, (now - this.clock.last) / 1000);
+    // geliştirme: yavaş (yazılımsal) çizimde ekran görüntüsü için büyük zaman adımı
+    const dtMax = (import.meta.env.DEV && (window as unknown as { __dtMax?: number }).__dtMax) || 0.05;
+    const dt = Math.min(dtMax, (now - this.clock.last) / 1000);
     this.clock.last = now;
     const m = MOOD[this.mood];
     const inPlay = this.step === "play";
@@ -338,7 +365,8 @@ export class PlayWorld {
     rc.d20[2] = damp(rc.d20[2], tgt.d20[2], rk, dt);
     rc.s = damp(rc.s, tgt.s * (narrow ? 0.62 : 1), rk, dt);
     rc.circle = damp(rc.circle, tgt.circle, rk, dt);
-    rc.art = damp(rc.art, tgt.art * this.artHas, 1.6, dt);
+    rc.art = damp(rc.art, tgt.art, 1.6, dt);
+    this.artHasCur = damp(this.artHasCur, this.artHas, 2, dt);
     rc.fog = damp(rc.fog, tgt.fog, 1.5, dt);
     for (let i = 0; i < 3; i++) {
       rc.cam[i] = damp(rc.cam[i], tgt.cam[i], rk * 0.8, dt);
@@ -351,6 +379,7 @@ export class PlayWorld {
     const focus = inPlay ? this.table.focus() : null;
     this.dieW = damp(this.dieW, focus?.kind === "die" ? 1 : 0, 2.2, dt);
     this.speakW = damp(this.speakW, focus?.kind === "speaker" ? 1 : 0, 1.8, dt);
+    this.mirrorW = damp(this.mirrorW, focus?.kind === "mirror" ? 1 : 0, 1.2, dt);
     if (focus) this.focusPos.lerp(focus.pos, 1 - Math.exp(-4 * dt));
 
     /* kamera — kadraj + odak + paralaks + sarsıntı */
@@ -362,32 +391,53 @@ export class PlayWorld {
     let cx = rc.cam[0];
     let cy = rc.cam[1];
     let cz = rc.cam[2];
-    // dikey ekranda: daha yüksekten, geriden bak — masa diyalog kutusunun üstünde kalsın
+    // dikey ekranda: masanın tamamı dar genişliğe sığsın diye uzaktan, ortadan bak
     const nb = narrow ? pb : 0;
-    cy += 3.8 * nb;
-    cz += 6.4 * nb;
+    cx += (0 - cx) * nb;
+    cy += (4.3 - cy) * nb;
+    cz += (9.4 - cz) * nb;
     const fp = this.focusPos;
-    cx += (fp.x * 0.45 - cx) * this.dieW * 0.8;
-    cy += (TABLE_Y + 2.3 - cy) * this.dieW * 0.8;
-    cz += (fp.z + (narrow ? 4.4 : 3.1) - cz) * this.dieW * 0.8;
+    // zar kamerası: sağ-önden çapraz, yukarıdan — ayağa kalkan atan kişi kadrajı kapatmasın
+    cx += (fp.x + (narrow ? 1.6 : 2.4) - cx) * this.dieW * 0.85;
+    cy += (TABLE_Y + (narrow ? 3.4 : 2.7) - cy) * this.dieW * 0.85;
+    cz += (fp.z + (narrow ? 3.4 : 2.2) - cz) * this.dieW * 0.85;
+    // sahne açılışı: aynaya doğru yavaş bir yaklaşma
+    cx += (0 - cx) * this.mirrorW * 0.7;
+    cy += 0.35 * this.mirrorW;
+    cz -= 1.6 * this.mirrorW;
     this.camera.position.set(
       cx + this.pointerCur.x * 0.55 * pk + (Math.random() - 0.5) * sh,
       cy + this.pointerCur.y * 0.35 * pk + (Math.random() - 0.5) * sh,
       cz + Math.sin(t * 0.15) * 0.12 * (1 - pb * 0.6)
     );
-    const lw = this.dieW * 0.9 + this.speakW * 0.22 * (1 - this.dieW);
+    const lw = this.dieW * 0.9 + (this.speakW * 0.28 + this.mirrorW * 0.85) * (1 - this.dieW);
     this.camLook.set(
       rc.look[0] + (fp.x - rc.look[0]) * lw + this.pointerCur.x * 0.15 * pk,
-      rc.look[1] - 2.1 * nb + (fp.y - rc.look[1]) * lw + this.pointerCur.y * 0.1 * pk,
+      rc.look[1] + 0.35 * nb + (fp.y - rc.look[1]) * lw + this.pointerCur.y * 0.1 * pk,
       rc.look[2] + (fp.z - rc.look[2]) * lw
     );
     this.camera.lookAt(this.camLook);
-    const fov = 45 + (narrow ? 16 : 0) * pb;
-    if (Math.abs(this.camera.fov - fov) > 0.01) {
+    // geliştirme: dışarıdan kamera (ölçüm/ekran görüntüsü için)
+    const dbg = import.meta.env.DEV ? (window as unknown as { __cam?: number[] }).__cam : undefined;
+    if (dbg) {
+      this.camera.position.set(dbg[0], dbg[1], dbg[2]);
+      this.camera.lookAt(dbg[3], dbg[4], dbg[5]);
+    }
+    const fov = 45 + (narrow ? 18 : 5) * pb;
+    // lens kaydırma: sahne, alttaki diyalog kutusunun üstündeki alana otursun
+    const shift = (narrow ? 0.09 : 0.1) * pb;
+    if (Math.abs(this.camera.fov - fov) > 0.01 || Math.abs(this.lensShift - shift) > 0.0005) {
       this.camera.fov = fov;
+      this.lensShift = shift;
+      const w = this.el.clientWidth || innerWidth;
+      const h = this.el.clientHeight || innerHeight;
+      if (shift > 0.001) this.camera.setViewOffset(w, h, 0, shift * h, w, h);
+      else this.camera.clearViewOffset();
       this.camera.updateProjectionMatrix();
     }
-    this.scene.environmentIntensity = 0.55 - 0.33 * pb;
+    this.scene.environmentIntensity = 0.55 - 0.42 * pb;
+    this.roomFog.density = 0.05 * pb;
+    this.roomFog.color.set(this.amb === "cyber" ? 0x04070c : 0x0a0710);
 
     /* D20 */
     this.spinKick = Math.max(0, this.spinKick - dt * 4);
@@ -444,18 +494,18 @@ export class PlayWorld {
     const nu = this.nebula.uniforms;
     nu.uTime.value = t;
     nu.uEnergy.value = this.energyCur;
-    nu.uDim.value = 1 - rc.art * 0.55;
+    nu.uDim.value = 1 - pb * 0.9;
     (nu.uPointer.value as THREE.Vector2).copy(this.pointerCur);
     (nu.uA.value as THREE.Color).copy(this.colA);
     (nu.uB.value as THREE.Color).copy(this.colB);
     (nu.uBg.value as THREE.Color).copy(this.colBg);
     this.stars.uniforms.uTime.value = t;
-    this.stars.uniforms.uOpacity.value = 1 - rc.art * 0.7;
+    this.stars.uniforms.uOpacity.value = 1 - pb;
 
     const mu = this.motes.uniforms;
     mu.uTime.value = t;
     mu.uCyber.value = this.cyberCur;
-    mu.uEnergy.value = this.energyCur;
+    mu.uEnergy.value = this.energyCur * (1 - pb * 0.55);
     (mu.uA.value as THREE.Color).copy(this.colA);
     (mu.uB.value as THREE.Color).copy(this.colB);
 
@@ -479,6 +529,7 @@ export class PlayWorld {
     const au = this.art.material.uniforms;
     au.uTime.value = t;
     au.uOpacity.value = rc.art;
+    au.uHas.value = this.artHasCur;
     au.uEnergy.value = this.energyCur;
     (au.uA.value as THREE.Color).copy(this.colA);
     (au.uB.value as THREE.Color).copy(this.colB);
@@ -500,7 +551,7 @@ export class PlayWorld {
     this.table.group.position.y = (pb - 1) * 1.5;
     this.table.update(dt, t, this.colA, this.colB, pb > 0.02, this.cyberCur);
 
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render(dt);
   };
 
   /* ── gökyüzü: tam ekran nebula ── */
@@ -649,6 +700,7 @@ export class PlayWorld {
         uAspB: { value: 16 / 9 },
         uPlaneAsp: { value: 16 / 9 },
         uMix: { value: 0 },
+        uHas: { value: 0 },
         uOpacity: { value: 0 },
         uTime: { value: 0 },
         uEnergy: { value: 1 },
@@ -661,13 +713,12 @@ export class PlayWorld {
         void main(){
           vUv = uv;
           vec3 p = position;
-          p.z -= pow(p.x * .05, 2.) * 6.;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.);
         }`,
       fragmentShader: /* glsl */ `
         varying vec2 vUv;
         uniform sampler2D uTexA, uTexB;
-        uniform float uAspA, uAspB, uPlaneAsp, uMix, uOpacity, uTime, uEnergy;
+        uniform float uAspA, uAspB, uPlaneAsp, uMix, uOpacity, uTime, uEnergy, uHas;
         uniform vec2 uPointer;
         uniform vec3 uA, uB;
         ${NOISE}
@@ -688,28 +739,38 @@ export class PlayWorld {
           float l = dot(col, vec3(.299, .587, .114));
           col = mix(col, col * mix(uA, uB, l) * 2.2, .07);
           col *= .82 + .18 * uEnergy;
+          // çizim yokken: aynada dönen büyülü sis
+          vec2 sp = (vUv - .5) * vec2(uPlaneAsp, 1.);
+          float r = length(sp);
+          float ang = atan(sp.y, sp.x);
+          float sw = fbm(vec2(ang * 1.6 + uTime * .06 + r * 3.2, r * 4. - uTime * .15));
+          vec3 mist = mix(uA * .18, uB * .85, smoothstep(.35, .85, sw)) * (1.15 - r * .8);
+          mist += mix(uA, vec3(1.), .3) * pow(max(0., 1. - r * 2.4), 3.) * .9;
+          col = mix(mist, col, uHas);
           vec2 q = vUv - .5;
-          col *= 1. - smoothstep(.28, .75, length(q * vec2(1., 1.25))) * .75;
-          // kenarlar karanlığa erir — perde değil, masanın arkasında açılan bir vizyon
-          float ex = smoothstep(0., .16, min(vUv.x, 1. - vUv.x));
-          float ey = smoothstep(0., .28, vUv.y) * smoothstep(0., .1, 1. - vUv.y);
-          gl_FragColor = vec4(col, uOpacity * ex * ey);
+          col *= 1. - smoothstep(.35, .8, length(q * vec2(1., 1.25))) * .45;
+          // ayna camı: kenara doğru hafif iç gölge + yansıma şeridi
+          float ex = smoothstep(0., .035, min(vUv.x, 1. - vUv.x)) * smoothstep(0., .05, min(vUv.y, 1. - vUv.y));
+          col *= .55 + .45 * ex;
+          col += vec3(1.) * .05 * smoothstep(.02, 0., abs(vUv.x - vUv.y * .6 - .15));
+          gl_FragColor = vec4(col, uOpacity);
           ${OUT}
         }`,
     });
     this.art = new THREE.Mesh(new THREE.PlaneGeometry(1, 1, 48, 1), mat);
-    this.art.position.set(0, 3.3, -12);
-    this.art.renderOrder = -4;
+    // tavernadaki büyü aynasının camı
+    this.art.position.set(MIRROR.x, MIRROR.y, MIRROR.z);
+    this.art.renderOrder = 1;
     this.scene.add(this.art);
   }
 
-  /** vizyon perdesi: masanın arkasında, kadrajın üst yarısını kaplayan geniş ekran */
+  /** sahne çizimi aynanın camına oturur */
   private fitArt() {
     if (!this.art) return;
-    const h = 15;
-    const w = h * Math.max(16 / 9, this.camera.aspect * 1.25);
+    const w = MIRROR.w;
+    const h = MIRROR.h;
     this.art.geometry.dispose();
-    this.art.geometry = new THREE.PlaneGeometry(w, h, 48, 1);
+    this.art.geometry = new THREE.PlaneGeometry(w, h, 1, 1);
     this.art.material.uniforms.uPlaneAsp.value = w / h;
   }
 
