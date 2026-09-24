@@ -17,6 +17,7 @@ export default function World3D({
   kick,
   burst,
   onFail,
+  onReady,
 }: {
   step: WorldStep;
   amb: WorldAmb;
@@ -26,6 +27,8 @@ export default function World3D({
   kick: number;
   burst: WorldBurst;
   onFail: () => void;
+  /** masa/zar gibi emir kipli çağrılar için dünya örneği (dağılınca null) */
+  onReady?: (world: PlayWorld | null) => void;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const worldRef = useRef<PlayWorld | null>(null);
@@ -34,6 +37,8 @@ export default function World3D({
   latest.current = { step, amb, mood, art, accent };
   const failRef = useRef(onFail);
   failRef.current = onFail;
+  const readyRef = useRef(onReady);
+  readyRef.current = onReady;
 
   useEffect(() => {
     let disposed = false;
@@ -56,10 +61,12 @@ export default function World3D({
         world.setArt(s.art);
         worldRef.current = world;
         hostRef.current.classList.add("is-ready");
+        readyRef.current?.(world);
       })
       .catch(() => failRef.current());
     return () => {
       disposed = true;
+      if (world) readyRef.current?.(null);
       world?.dispose();
       worldRef.current = null;
     };

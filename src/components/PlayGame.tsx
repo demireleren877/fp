@@ -3,7 +3,7 @@ import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import type { Series } from "../data/series";
 import GameDice from "./GameDice";
 import World3D, { type WorldBurst } from "./World3D";
-import type { WorldAmb, WorldArt } from "../three/PlayWorld";
+import type { PlayWorld, WorldAmb, WorldArt, NpcCard } from "../three/PlayWorld";
 import { GameAudio, type Amb, type AudioMood } from "../audio/GameAudio";
 import {
   scenariosForSeries,
@@ -164,6 +164,7 @@ export default function PlayGame({
 
   /* 3D dünya durumu */
   const [worldOk, setWorldOk] = useState(true);
+  const [world, setWorld] = useState<PlayWorld | null>(null);
   const [accent, setAccent] = useState<string | null>(null);
   const [kick, setKick] = useState(0);
   const [burst, setBurst] = useState<WorldBurst>(null);
@@ -246,6 +247,7 @@ export default function PlayGame({
             kick={kick}
             burst={burst}
             onFail={onWorldFail}
+            onReady={setWorld}
           />
         )}
 
@@ -465,6 +467,7 @@ export default function PlayGame({
                   charId={charId}
                   next={nextOf(scenario)}
                   has3d={worldOk}
+                  world={world}
                   onAtmos={onAtmos}
                   onBurst={onBurst}
                   onExit={() => go("episode")}
@@ -719,6 +722,7 @@ function PlayEngine({
   charId,
   next,
   has3d,
+  world,
   onAtmos,
   onBurst,
   onExit,
@@ -730,6 +734,7 @@ function PlayEngine({
   charId: string;
   next: Scenario | null;
   has3d: boolean;
+  world: PlayWorld | null;
   onAtmos: (amb: "forest" | "cyber", mood: Mood, art: SceneArt | null) => void;
   onBurst: (kind: "crit" | "fail") => void;
   onExit: () => void;
@@ -759,6 +764,11 @@ function PlayEngine({
     }
   });
   const feedRef = useRef<HTMLDivElement | null>(null);
+  // masa modu: 3D masa + alt diyalog kutusu (3D yoksa klasik sohbet akışı)
+  const table = has3d;
+  // geçmiş konuşmalar paneli (masa modu)
+  const [logOpen, setLogOpen] = useState(false);
+  const logRef = useRef<HTMLDivElement | null>(null);
 
   const charMap = useMemo(() => new Map(scenario.characters.map((c) => [c.id, c])), [scenario]);
   const nameOf = (id: string) => (id === charId ? "Sen" : charMap.get(id)?.name ?? id);
@@ -991,6 +1001,73 @@ function PlayEngine({
   }, [cursor, tw.shown, finished]);
 
   const advance = () => setCursor((c) => c + 1);
+
+  /* ── 3D masa: koltuklar, konuşan, masadaki zarlar ── */
+  useEffect(() => {
+    if (!world) return;
+    world.setTable(
+      scenario.characters
+        .filter((c) => !c.npc)
+        .map((c) => ({
+          id: c.id,
+          name: c.id === "gm" ? "Anlatıcı" : c.name,
+          color: charColor(c.id),
+          avatar: c.id === "gm" ? narrator.avatar : c.avatar,
+          face: faceOfChar(c),
+          isGm: c.id === "gm",
+          isMe: c.id === charId,
+        }))
+    );
+    return () => world.setTable([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [world, scenario, charId]);
+
+  useEffect(() => {
+    if (!world) return;
+    if (finished || offerResume) return world.setSpeaker(null);
+    const b = beats[cursor];
+    let id: string | null = null;
+    let npc: NpcCard = null;
+    if (b.kind === "narration") id = "gm";
+    else if (b.kind === "line") {
+      const c = charMap.get(b.who);
+      if (c?.npc) {
+        // NPC'yi anlatıcı seslendirir → masanın ortasında hologram
+        id = "gm";
+        npc = { name: c.name, color: charColor(c.id), avatar: c.avatar, face: faceOfChar(c) };
+      } else id = b.who;
+    } else if (b.kind === "choice" || b.kind === "roll") id = b.actor === charId ? "gm" : b.actor;
+    world.setSpeaker(id, npc);
+    // başka bir oyuncunun videodaki gerçek zarı → kendi koltuğundan masaya atılır
+    if (b.kind === "roll" && b.actor !== charId && b.canonRoll != null) world.rollDie(b.canonRoll, b.actor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [world, cursor, finished, offerResume]);
+
+  /* senin zarının sonucu — ışık, müzik vuruşu, sonra hikaye devam eder */
+  const resolveMyRoll = (v: number, dc: number, success: string, failure: string) => {
+    const ok = v >= dc;
+    const text = `Zar ${v} (hedef ${dc}) — ${ok ? success : failure}`;
+    if (v === 20) {
+      setFlash({ n: Date.now(), cls: "crit" });
+      onBurst("crit");
+      audio?.stinger("stinger-crit", 0.6);
+    } else if (v === 1) {
+      setFlash({ n: Date.now(), cls: "fail" });
+      onBurst("fail");
+      audio?.stinger("stinger-fail", 0.6);
+    }
+    const at = cursor;
+    setTimeout(() => {
+      setOutcomes((p) => ({ ...p, [at]: { text, ok } }));
+      advance();
+    }, 1900);
+  };
+
+  /* geçmiş paneli açılınca en alta kaydır */
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [logOpen]);
   const restart = () => {
     clearProgress(saveKey);
     setCursor(0);
@@ -999,6 +1076,78 @@ function PlayEngine({
   };
 
   const live = finished ? null : beats[cursor];
+  // bir önceki adımda senin kararının/zarının sonucu (masa modunda kısa süre görünür)
+  const prevOutcome = !finished && cursor > 0 ? outcomes[cursor - 1] : undefined;
+  const liveScene = liveMsgs.find((m) => m.type === "scene") as Extract<Msg, { type: "scene" }> | undefined;
+  const plainAdvance = !finished && !offerResume && !(live?.kind === "choice" && live.actor === charId) && !(live?.kind === "roll" && live.actor === charId);
+
+  const endCard = (
+    <div className="vn-end">
+    <span className="vn-end-orn">✦</span>
+    <h3 className="vn-end-title">Bölümü Tamamladın</h3>
+    <p className="vn-end-sub">
+      {scenario.title} — {series.title}
+    </p>
+    {next && (
+      <p className="vn-end-next">
+        Sıradaki ▸ <b>Bölüm {next.episode}: {next.title}</b>
+      </p>
+    )}
+
+    <div className="vn-card" data-amb={ambiance}>
+      <div className="vn-card-top">
+        <Avatar face={faceOfChar(me)} color={charColor(charId)} img={me?.avatar} me size={44} />
+        <div>
+          <span className="vn-card-name">{me?.name}</span>
+          <span className="vn-card-meta">
+            {series.title} · Bölüm {scenario.episode}
+          </span>
+        </div>
+      </div>
+
+      {myActions.rolls.length > 0 && (
+        <div className="vn-card-sec">
+          <span className="vn-card-h">Zar Atışların</span>
+          <ul>
+            {myActions.rolls.map((r, i) => (
+              <li key={i} className={r.ok === false ? "no" : r.ok ? "ok" : ""}>
+                {r.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {myActions.decisions.length > 0 && (
+        <div className="vn-card-sec">
+          <span className="vn-card-h">Kararların</span>
+          <ul>
+            {myActions.decisions.map((d, i) => (
+              <li key={i}>{d}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {clues.length > 0 && (
+        <div className="vn-card-sec">
+          <span className="vn-card-h">Topladığın İpuçları</span>
+          <ul>
+            {clues.map((c, i) => (
+              <li key={i}>
+                {c.kind === "item" ? "🎒" : "🔎"} {c.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <button className="vn-card-copy" onClick={copySummary}>
+        {copied ? "✓ Kopyalandı" : "⧉ Özeti kopyala"}
+      </button>
+    </div>
+  </div>
+  );
   const myChoice = live?.kind === "choice" && live.actor === charId ? live : null;
   const myRoll = live?.kind === "roll" && live.actor === charId ? live : null;
 
@@ -1054,6 +1203,16 @@ function PlayEngine({
           >
             {soundOn ? "🔊" : "🔇"}
           </button>
+          {table && (
+            <button
+              className="vn-hud-journal"
+              onClick={() => setLogOpen(true)}
+              aria-label="Konuşma geçmişi"
+              title="Konuşma geçmişi"
+            >
+              📜
+            </button>
+          )}
           <button
             className={`vn-hud-journal ${clues.length ? "has" : ""}`}
             onClick={() => setJournalOpen(true)}
@@ -1122,99 +1281,111 @@ function PlayEngine({
         </div>
       )}
 
-      {/* akan sohbet günlüğü */}
-      <div className="vn-feed" ref={feedRef}>
-        <div className="vn-feed-inner">
-          {/* geçmiş — kaybolmayan akış */}
-          {beats.slice(0, cursor).flatMap((_, i) =>
-            beatMsgs(i).map((m, mi) => <Row key={`${i}-${mi}`} msg={m} />)
-          )}
+      {table ? (
+        <>
+          {/* masa sahnesi — 3D masa arkada; üstünde sahne kartı / sonuç / bitiş */}
+          <div
+            className={`tm-stage ${plainAdvance ? "can-advance" : ""}`}
+            onClick={() => plainAdvance && (tw.done ? advance() : tw.skip())}
+          >
+            {liveScene && (
+              <div className="tm-scene" key={`sc-${cursor}`}>
+                <span className="vn-scene-orn">✦ ✦ ✦</span>
+                <h2 className="tm-scene-title">{liveScene.title}</h2>
+                {liveScene.subtitle && <span className="vn-scene-sub">{liveScene.subtitle}</span>}
+              </div>
+            )}
+            {prevOutcome && !liveScene && (
+              <div
+                className={`tm-outcome ${prevOutcome.ok === true ? "ok" : prevOutcome.ok === false ? "no" : ""}`}
+                key={`o-${cursor}`}
+              >
+                <span className="vn-outcome-tag">Sonuç</span>
+                <span className="vn-outcome-text">{prevOutcome.text}</span>
+              </div>
+            )}
+            {finished && (
+              <div className="tm-end" onClick={(e) => e.stopPropagation()}>
+                {endCard}
+              </div>
+            )}
+          </div>
 
-          {/* canlı beat — son replik daktiloyla */}
-          {!finished &&
-            liveMsgs.map((m, mi) => {
-              const typing = m === liveSay;
-              return (
-                <Row
-                  key={`live-${cursor}-${mi}`}
-                  msg={m}
-                  live
-                  typed={typing ? tw.shown : undefined}
-                  caret={typing && !tw.done}
-                />
-              );
-            })}
-
-          {/* bitiş — paylaşılabilir sonuç kartı */}
-          {finished && (
-            <div className="vn-end">
-              <span className="vn-end-orn">✦</span>
-              <h3 className="vn-end-title">Bölümü Tamamladın</h3>
-              <p className="vn-end-sub">
-                {scenario.title} — {series.title}
-              </p>
-              {next && (
-                <p className="vn-end-next">
-                  Sıradaki ▸ <b>Bölüm {next.episode}: {next.title}</b>
+          {/* diyalog kutusu — konuşanın portresi, adı, daktiloyla replik */}
+          {!finished && liveSay && (
+            <div
+              className={`tm-dialog ${liveSay.me ? "me" : ""}`}
+              key={`d-${cursor}`}
+              style={{ ["--ac" as string]: liveSay.me ? "var(--gold)" : liveSay.color }}
+              onClick={() => plainAdvance && (tw.done ? advance() : tw.skip())}
+            >
+              <Avatar face={liveSay.face} color={liveSay.color} img={liveSay.avatar} me={liveSay.me} size={68} />
+              <div className="tm-dialog-body">
+                <span className="tm-dialog-name">
+                  {liveSay.name}
+                  {liveSay.tag && <em>{liveSay.tag}</em>}
+                </span>
+                {liveSay.art && (
+                  <figure className="tm-dialog-art">
+                    <img src={liveSay.art.src} alt={liveSay.art.alt} loading="lazy" />
+                  </figure>
+                )}
+                <p className="tm-dialog-text">
+                  {tw.shown}
+                  {!tw.done && <span className="vn-caret" />}
                 </p>
-              )}
-
-              <div className="vn-card" data-amb={ambiance}>
-                <div className="vn-card-top">
-                  <Avatar face={faceOfChar(me)} color={charColor(charId)} img={me?.avatar} me size={44} />
-                  <div>
-                    <span className="vn-card-name">{me?.name}</span>
-                    <span className="vn-card-meta">
-                      {series.title} · Bölüm {scenario.episode}
-                    </span>
-                  </div>
-                </div>
-
-                {myActions.rolls.length > 0 && (
-                  <div className="vn-card-sec">
-                    <span className="vn-card-h">Zar Atışların</span>
-                    <ul>
-                      {myActions.rolls.map((r, i) => (
-                        <li key={i} className={r.ok === false ? "no" : r.ok ? "ok" : ""}>
-                          {r.text}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {myActions.decisions.length > 0 && (
-                  <div className="vn-card-sec">
-                    <span className="vn-card-h">Kararların</span>
-                    <ul>
-                      {myActions.decisions.map((d, i) => (
-                        <li key={i}>{d}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {clues.length > 0 && (
-                  <div className="vn-card-sec">
-                    <span className="vn-card-h">Topladığın İpuçları</span>
-                    <ul>
-                      {clues.map((c, i) => (
-                        <li key={i}>
-                          {c.kind === "item" ? "🎒" : "🔎"} {c.label}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <button className="vn-card-copy" onClick={copySummary}>
-                  {copied ? "✓ Kopyalandı" : "⧉ Özeti kopyala"}
-                </button>
               </div>
             </div>
           )}
+
+          {/* geçmiş paneli */}
+          {logOpen && (
+            <div className="vn-journal" onClick={() => setLogOpen(false)}>
+              <aside className="vn-journal-panel tm-log" onClick={(e) => e.stopPropagation()}>
+                <header className="vn-journal-head">
+                  <h3>Masada Konuşulanlar</h3>
+                  <button onClick={() => setLogOpen(false)} aria-label="Kapat">
+                    ✕
+                  </button>
+                </header>
+                <div className="tm-log-list" ref={logRef}>
+                  {cursor === 0 && <p className="vn-journal-empty">Henüz kimse konuşmadı.</p>}
+                  {beats.slice(0, cursor).flatMap((_, i) =>
+                    beatMsgs(i).map((m, mi) => <Row key={`${i}-${mi}`} msg={m} />)
+                  )}
+                </div>
+              </aside>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="vn-feed" ref={feedRef}>
+          <div className="vn-feed-inner">
+            {/* geçmiş — kaybolmayan akış */}
+            {beats.slice(0, cursor).flatMap((_, i) =>
+              beatMsgs(i).map((m, mi) => <Row key={`${i}-${mi}`} msg={m} />)
+            )}
+
+            {/* canlı beat — son replik daktiloyla */}
+            {!finished &&
+              liveMsgs.map((m, mi) => {
+                const typing = m === liveSay;
+                return (
+                  <Row
+                    key={`live-${cursor}-${mi}`}
+                    msg={m}
+                    live
+                    typed={typing ? tw.shown : undefined}
+                    caret={typing && !tw.done}
+                  />
+                );
+              })}
+
+            {/* bitiş — paylaşılabilir sonuç kartı */}
+            {finished && endCard}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* alt aksiyon çubuğu — sıra sende olduğunda */}
       <div className="vn-bar">
@@ -1256,6 +1427,17 @@ function PlayEngine({
           )
         ) : myRoll ? (
           tw.done ? (
+            table && world ? (
+              <TableRoll
+                dc={myRoll.dc}
+                onRoll={async () => {
+                  const v = randomD20();
+                  await world.rollDie(v, charId);
+                  resolveMyRoll(v, myRoll.dc, myRoll.success, myRoll.failure);
+                  return v;
+                }}
+              />
+            ) : (
             <div className="vn-dice">
               <GameDice
                 interpret={(v) => {
@@ -1265,25 +1447,10 @@ function PlayEngine({
                     cls: ok ? "crit" : "fail",
                   };
                 }}
-                onResult={(v) => {
-                  const ok = v >= myRoll.dc;
-                  const text = `Zar ${v} (hedef ${myRoll.dc}) — ${ok ? myRoll.success : myRoll.failure}`;
-                  if (v === 20) {
-                    setFlash({ n: Date.now(), cls: "crit" });
-                    onBurst("crit");
-                    audio?.stinger("stinger-crit", 0.6);
-                  } else if (v === 1) {
-                    setFlash({ n: Date.now(), cls: "fail" });
-                    onBurst("fail");
-                    audio?.stinger("stinger-fail", 0.6);
-                  }
-                  setTimeout(() => {
-                    setOutcomes((p) => ({ ...p, [cursor]: { text, ok } }));
-                    advance();
-                  }, 1900);
-                }}
+                onResult={(v) => resolveMyRoll(v, myRoll.dc, myRoll.success, myRoll.failure)}
               />
             </div>
+            )
           ) : (
             <button className="vn-skip" onClick={tw.skip}>
               zar için bekle… <span className="vn-skip-x">(atla)</span>
@@ -1346,6 +1513,52 @@ function Row({
           {caret && <span className="vn-caret" />}
         </p>
       </div>
+    </div>
+  );
+}
+
+/* adil D20 — mümkünse kriptografik rastgelelik */
+function randomD20() {
+  try {
+    const a = new Uint32Array(1);
+    crypto.getRandomValues(a);
+    return (a[0] % 20) + 1;
+  } catch {
+    return 1 + Math.floor(Math.random() * 20);
+  }
+}
+
+/* masa modunda senin zarın: düğme → zar 3D masaya atılır → sonuç okunur */
+function TableRoll({ dc, onRoll }: { dc: number; onRoll: () => Promise<number> }) {
+  const [phase, setPhase] = useState<"idle" | "rolling" | "done">("idle");
+  const [value, setValue] = useState(0);
+  const ok = value >= dc;
+  return (
+    <div className="tm-roll">
+      {phase === "idle" && (
+        <button
+          className="btn btn-royal tm-roll-btn"
+          onClick={async () => {
+            setPhase("rolling");
+            const v = await onRoll();
+            setValue(v);
+            setPhase("done");
+          }}
+        >
+          <span className="btn-royal-glyph">🎲</span> Zarı masaya at
+        </button>
+      )}
+      <span className={`tm-roll-read ${phase === "done" ? (value === 20 || ok ? "crit" : "fail") : ""}`}>
+        {phase === "idle"
+          ? `hedef ${dc}+ · şans seninle`
+          : phase === "rolling"
+            ? "kader dönüyor…"
+            : value === 20
+              ? "★ Doğal 20 — Kritik Başarı!"
+              : value === 1
+                ? "✷ Doğal 1 — Kritik Başarısızlık!"
+                : `${value} — ${ok ? "Başarılı!" : "Başarısız"}`}
+      </span>
     </div>
   );
 }

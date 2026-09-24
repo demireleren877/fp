@@ -2281,6 +2281,179 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; t
 @keyframes endSpin { to { transform: rotateY(360deg); } }
 .playpage.has-3d .vn-card { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 
+/* ════ MASA MODU — 3D masa sahnesi + alt diyalog kutusu ════ */
+.playpage.has-3d .vn-hud { background: linear-gradient(180deg, rgba(5, 4, 10, 0.7), rgba(5, 4, 10, 0)); }
+.tm-stage {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: clamp(8px, 3vh, 36px) 16px 12px;
+  perspective: 1200px;
+}
+.tm-stage.can-advance { cursor: pointer; }
+.tm-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  max-width: 760px;
+  padding: 18px 34px 22px;
+  border-radius: 20px;
+  background: radial-gradient(closest-side, rgba(5, 4, 10, 0.72), rgba(5, 4, 10, 0));
+  animation: vnScene3d 1.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: 50% 80%;
+}
+.tm-scene-title {
+  font-family: var(--display);
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+  line-height: 1.05;
+  background: linear-gradient(180deg, #fff6dc, var(--gold-soft) 50%, #b88f3e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 6px 30px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 40px rgba(216, 180, 90, 0.35));
+}
+.tm-outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: min(680px, 94%);
+  text-align: center;
+  padding: 12px 24px;
+  border-radius: 18px;
+  border: 1px solid var(--gold);
+  background: rgba(10, 8, 18, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.8);
+  animation: tmPop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tm-outcome.ok { border-color: #5fd0a8; box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.8), 0 0 40px -14px #5fd0a8; }
+.tm-outcome.no { border-color: var(--bordo); box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.8), 0 0 40px -14px var(--bordo); }
+.tm-outcome.ok .vn-outcome-tag { color: #5fd0a8; }
+.tm-outcome.no .vn-outcome-tag { color: var(--bordo); }
+@keyframes tmPop {
+  from { opacity: 0; transform: translateY(-16px) translateZ(-80px) rotateX(25deg); }
+  to { opacity: 1; transform: none; }
+}
+.tm-end {
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 8px 18px 18px;
+  border-radius: 22px;
+  background: rgba(8, 7, 15, 0.72);
+  border: 1px solid var(--glass-line);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: default;
+}
+
+/* diyalog kutusu — görsel roman tarzı, konuşanın renginde */
+.tm-dialog {
+  position: relative;
+  z-index: 3;
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: min(94%, 900px);
+  margin: 0 auto 12px;
+  padding: 16px 22px 18px 18px;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(20, 16, 36, 0.86), rgba(8, 7, 15, 0.92));
+  border: 1px solid color-mix(in srgb, var(--ac, var(--gold)) 55%, transparent);
+  box-shadow:
+    0 30px 60px -20px rgba(0, 0, 0, 0.9),
+    0 0 50px -18px color-mix(in srgb, var(--ac, var(--gold)) 70%, transparent),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  animation: tmDialogIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: 50% 100%;
+}
+.tm-dialog::before {
+  content: "";
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  top: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--ac, var(--gold)), transparent);
+}
+@keyframes tmDialogIn {
+  from { opacity: 0; transform: translateY(24px) rotateX(-18deg); }
+  to { opacity: 1; transform: none; }
+}
+.tm-dialog.me { background: linear-gradient(180deg, rgba(56, 44, 20, 0.88), rgba(20, 15, 8, 0.94)); }
+.tm-dialog .pg-avatar { box-shadow: 0 0 30px color-mix(in srgb, var(--ac, var(--gold)) 50%, transparent); }
+.tm-dialog-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.tm-dialog-name {
+  font-family: var(--display);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--ac, var(--gold)) 80%, white 20%);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tm-dialog-name em {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tm-dialog-text {
+  font-size: clamp(1.02rem, 1.8vw, 1.18rem);
+  line-height: 1.6;
+  color: var(--text);
+  max-height: 34vh;
+  overflow-y: auto;
+}
+.tm-dialog-art { margin: 2px 0 4px; border-radius: 12px; overflow: hidden; max-width: 360px; border: 1px solid var(--glass-line); }
+.tm-dialog-art img { width: 100%; max-height: 22vh; object-fit: cover; }
+
+/* masaya zar at */
+.tm-roll { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 4px 0; }
+.tm-roll-btn { font-size: 0.95rem; }
+.tm-roll-read {
+  font-family: var(--display);
+  font-size: 0.86rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  min-height: 1.3em;
+}
+.tm-roll-read.crit { color: var(--gold); text-shadow: 0 0 18px rgba(216, 180, 90, 0.6); font-size: 1.05rem; }
+.tm-roll-read.fail { color: #ff5a6e; text-shadow: 0 0 18px rgba(178, 49, 72, 0.6); font-size: 1.05rem; }
+
+/* konuşma geçmişi paneli */
+.vn-journal-panel.tm-log { width: min(520px, 94vw); display: flex; flex-direction: column; }
+.tm-log-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+.tm-log-list .vn-row { max-width: 100%; }
+.tm-log-list .pg-avatar { width: 36px !important; height: 36px !important; font-size: 18px !important; }
+.tm-log-list .vn-bubble-text { font-size: 0.95rem; }
+
+@media (max-width: 640px) {
+  .tm-dialog { gap: 12px; padding: 12px 14px 14px 12px; margin-bottom: 8px; }
+  .tm-dialog .pg-avatar { width: 46px !important; height: 46px !important; font-size: 24px !important; }
+  .tm-dialog-text { max-height: 30vh; }
+}
+
 @media (max-width: 720px) {
   .playpage-crumbs { display: none; }
   .playpage-top { justify-content: space-between; }

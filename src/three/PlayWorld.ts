@@ -1,5 +1,8 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { TableScene, TABLE_Y, type Seat, type NpcCard } from "./Table";
+
+export type { Seat, NpcCard };
 
 /**
  * "Oyna" modunun 3D dünyası — tek bir WebGL sahnesi, tüm adımlar boyunca yaşar.
@@ -35,12 +38,14 @@ const MOOD: Record<WorldMood, { speed: number; energy: number; tint?: string }> 
   wonder: { speed: 0.85, energy: 1.2, tint: "#ffe3a0" },
 };
 
-type Rig = { d20: [number, number, number]; s: number; circle: number; art: number; cam: [number, number, number]; fog: number };
+type V3 = [number, number, number];
+type Rig = { d20: V3; s: number; circle: number; art: number; cam: V3; look: V3; fog: number };
 const RIG: Record<WorldStep, Rig> = {
-  series: { d20: [3.0, 0.9, 0], s: 1, circle: 1, art: 0, cam: [0, 0, 8], fog: 0.5 },
-  character: { d20: [4.4, 1.7, -3.5], s: 0.7, circle: 0.7, art: 0, cam: [0, -0.3, 8], fog: 0.55 },
-  episode: { d20: [3.5, -0.3, -1.2], s: 1.05, circle: 1, art: 0, cam: [0.5, 0.25, 8], fog: 0.5 },
-  play: { d20: [0, 0.6, -22], s: 0.001, circle: 0, art: 1, cam: [0, 0, 8], fog: 0.4 },
+  series: { d20: [3.0, 0.9, 0], s: 1, circle: 1, art: 0, cam: [0, 0, 8], look: [0, 0, 0], fog: 0.5 },
+  character: { d20: [4.4, 1.7, -3.5], s: 0.7, circle: 0.7, art: 0, cam: [0, -0.3, 8], look: [0, 0, 0], fog: 0.55 },
+  episode: { d20: [3.5, -0.3, -1.2], s: 1.05, circle: 1, art: 0, cam: [0.5, 0.25, 8], look: [0, 0, 0], fog: 0.5 },
+  // oyun: oyuncunun koltuğundan masaya bakış — arkada sahne vizyonu
+  play: { d20: [0, 0.6, -22], s: 0.001, circle: 0.45, art: 1, cam: [0, 2.75, 4.95], look: [0, 1.95, -3], fog: 0 },
 };
 
 /* ── ortak GLSL parçaları ── */
@@ -97,7 +102,12 @@ export class PlayWorld {
   private tgtB = this.colB.clone();
   private tgtBg = this.colBg.clone();
   private cyberCur = 0;
-  private rigCur = { ...RIG.series, d20: [...RIG.series.d20] as [number, number, number], cam: [...RIG.series.cam] as [number, number, number] };
+  private rigCur = { ...RIG.series, d20: [...RIG.series.d20] as V3, cam: [...RIG.series.cam] as V3, look: [...RIG.series.look] as V3 };
+  private playBlend = 0;
+  private dieW = 0;
+  private speakW = 0;
+  private focusPos = new THREE.Vector3(0, TABLE_Y, 0);
+  private table!: TableScene;
   private camLook = new THREE.Vector3();
 
   /* nesneler */
@@ -138,6 +148,8 @@ export class PlayWorld {
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setClearColor(0x07060d, 1);
+    this.renderer.shadowMap.enabled = !this.small;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(this.renderer.domElement);
 
     const pmrem = new THREE.PMREMGenerator(this.renderer);
@@ -157,6 +169,13 @@ export class PlayWorld {
     this.buildMotes();
     this.buildBurst();
     this.buildLights();
+    this.table = new TableScene({
+      shadows: !this.small,
+      dieGeo: this.die.geometry,
+      dieMat: this.die.material,
+      glowTex: (this.glow.material as THREE.SpriteMaterial).map!,
+    });
+    this.scene.add(this.table.group);
 
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(el);
@@ -200,6 +219,19 @@ export class PlayWorld {
     this.spinKick = 10;
   }
 
+  /** masadaki koltuklar (anlatıcı, oyuncular, sen) */
+  setTable(seats: Seat[]) {
+    this.table.setSeats(seats);
+  }
+  /** konuşan koltuk; anlatıcı bir NPC'yi seslendiriyorsa `npc` hologramı */
+  setSpeaker(id: string | null, npc: NpcCard = null) {
+    this.table.setSpeaker(id, npc);
+  }
+  /** D20'yi `from` koltuğundan masaya at; istenen değer yukarı bakarak durur */
+  rollDie(value: number, from: string): Promise<void> {
+    return this.table.roll(value, from).then(() => undefined);
+  }
+
   setArt(art: WorldArt) {
     const key = art ? art.src + (art.video?.mp4 ?? "") : "";
     if (key === this.artKey) return;
@@ -227,6 +259,7 @@ export class PlayWorld {
     window.removeEventListener("pointermove", this.onPointer);
     window.removeEventListener("deviceorientation", this.onTilt);
     this.stopVideo();
+    this.table.dispose();
     this.artTextures.forEach((t) => t.dispose());
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
@@ -307,21 +340,54 @@ export class PlayWorld {
     rc.circle = damp(rc.circle, tgt.circle, rk, dt);
     rc.art = damp(rc.art, tgt.art * this.artHas, 1.6, dt);
     rc.fog = damp(rc.fog, tgt.fog, 1.5, dt);
-    for (let i = 0; i < 3; i++) rc.cam[i] = damp(rc.cam[i], tgt.cam[i], rk * 0.8, dt);
+    for (let i = 0; i < 3; i++) {
+      rc.cam[i] = damp(rc.cam[i], tgt.cam[i], rk * 0.8, dt);
+      rc.look[i] = damp(rc.look[i], tgt.look[i], rk * 0.8, dt);
+    }
+    this.playBlend = damp(this.playBlend, inPlay ? 1 : 0, rk * 0.8, dt);
+    const pb = this.playBlend;
 
-    /* kamera — paralaks + sarsıntı */
-    const pk = this.reduced ? 0.2 : 1;
+    /* masa odağı: yuvarlanan zar > konuşan */
+    const focus = inPlay ? this.table.focus() : null;
+    this.dieW = damp(this.dieW, focus?.kind === "die" ? 1 : 0, 2.2, dt);
+    this.speakW = damp(this.speakW, focus?.kind === "speaker" ? 1 : 0, 1.8, dt);
+    if (focus) this.focusPos.lerp(focus.pos, 1 - Math.exp(-4 * dt));
+
+    /* kamera — kadraj + odak + paralaks + sarsıntı */
+    const pk = (this.reduced ? 0.2 : 1) * (1 - pb * 0.55);
     this.pointerCur.x = damp(this.pointerCur.x, this.pointer.x, 3, dt);
     this.pointerCur.y = damp(this.pointerCur.y, this.pointer.y, 3, dt);
     this.shake = Math.max(0, this.shake - dt * 1.4);
     const sh = this.shake * this.shake;
+    let cx = rc.cam[0];
+    let cy = rc.cam[1];
+    let cz = rc.cam[2];
+    // dikey ekranda: daha yüksekten, geriden bak — masa diyalog kutusunun üstünde kalsın
+    const nb = narrow ? pb : 0;
+    cy += 3.8 * nb;
+    cz += 6.4 * nb;
+    const fp = this.focusPos;
+    cx += (fp.x * 0.45 - cx) * this.dieW * 0.8;
+    cy += (TABLE_Y + 2.3 - cy) * this.dieW * 0.8;
+    cz += (fp.z + (narrow ? 4.4 : 3.1) - cz) * this.dieW * 0.8;
     this.camera.position.set(
-      rc.cam[0] + this.pointerCur.x * 0.55 * pk + (Math.random() - 0.5) * sh,
-      rc.cam[1] + this.pointerCur.y * 0.35 * pk + (Math.random() - 0.5) * sh,
-      rc.cam[2] + Math.sin(t * 0.15) * 0.12
+      cx + this.pointerCur.x * 0.55 * pk + (Math.random() - 0.5) * sh,
+      cy + this.pointerCur.y * 0.35 * pk + (Math.random() - 0.5) * sh,
+      cz + Math.sin(t * 0.15) * 0.12 * (1 - pb * 0.6)
     );
-    this.camLook.set(this.pointerCur.x * 0.15 * pk, this.pointerCur.y * 0.1 * pk, 0);
+    const lw = this.dieW * 0.9 + this.speakW * 0.22 * (1 - this.dieW);
+    this.camLook.set(
+      rc.look[0] + (fp.x - rc.look[0]) * lw + this.pointerCur.x * 0.15 * pk,
+      rc.look[1] - 2.1 * nb + (fp.y - rc.look[1]) * lw + this.pointerCur.y * 0.1 * pk,
+      rc.look[2] + (fp.z - rc.look[2]) * lw
+    );
     this.camera.lookAt(this.camLook);
+    const fov = 45 + (narrow ? 16 : 0) * pb;
+    if (Math.abs(this.camera.fov - fov) > 0.01) {
+      this.camera.fov = fov;
+      this.camera.updateProjectionMatrix();
+    }
+    this.scene.environmentIntensity = 0.55 - 0.33 * pb;
 
     /* D20 */
     this.spinKick = Math.max(0, this.spinKick - dt * 4);
@@ -351,11 +417,17 @@ export class PlayWorld {
     });
 
     /* büyü çemberi — D20'nin altında */
-    this.circle.position.set(rc.d20[0], rc.d20[1] - 1.75 * rc.s - 0.2, rc.d20[2]);
-    this.circle.scale.setScalar(Math.max(0.001, rc.s));
+    // oyunda masanın ortasına, çuhaya yatar
+    this.circle.position.set(
+      THREE.MathUtils.lerp(rc.d20[0], 0, pb),
+      THREE.MathUtils.lerp(rc.d20[1] - 1.75 * rc.s - 0.2, TABLE_Y + 0.012 + (pb - 1) * 1.5, pb),
+      THREE.MathUtils.lerp(rc.d20[2], 0, pb)
+    );
+    this.circle.rotation.x = -Math.PI / 2 + 0.32 * (1 - pb);
+    this.circle.scale.setScalar(Math.max(0.001, THREE.MathUtils.lerp(rc.s, 0.72, pb)));
     const cu = this.circle.material.uniforms;
     cu.uTime.value = t;
-    cu.uOpacity.value = rc.circle * (0.6 + this.hoverCur * 0.4);
+    cu.uOpacity.value = rc.circle * (0.6 + this.hoverCur * 0.4) * (1 - pb * 0.4);
     (cu.uA.value as THREE.Color).copy(this.colA);
     (cu.uB.value as THREE.Color).copy(this.colB);
     this.circle.visible = rc.circle > 0.01;
@@ -393,11 +465,12 @@ export class PlayWorld {
       u.uOpacity.value = rc.fog * (0.9 + this.energyCur * 0.2) * (this.mood === "danger" && inPlay ? 1.3 : 1);
       (u.uA.value as THREE.Color).copy(this.colA);
       (u.uB.value as THREE.Color).copy(this.colB);
+      f.visible = u.uOpacity.value > 0.01;
     });
 
     const gu = this.grid.material.uniforms;
     gu.uTime.value = t;
-    gu.uOpacity.value = this.cyberCur * (inPlay ? 0.25 : 0.6);
+    gu.uOpacity.value = this.cyberCur * 0.6 * (1 - pb);
     (gu.uA.value as THREE.Color).copy(this.colA);
     (gu.uB.value as THREE.Color).copy(this.colB);
     this.grid.visible = gu.uOpacity.value > 0.01;
@@ -420,7 +493,12 @@ export class PlayWorld {
     /* patlama */
     this.burstT += dt;
     this.burstMat.uniforms.uT.value = this.burstT;
-    this.burstMat.uniforms.uOrigin.value.set(inPlay ? 0 : rc.d20[0], inPlay ? 0 : rc.d20[1], inPlay ? 2 : rc.d20[2]);
+    if (inPlay) this.burstMat.uniforms.uOrigin.value.copy(this.table.diePosition);
+    else this.burstMat.uniforms.uOrigin.value.set(rc.d20[0], rc.d20[1], rc.d20[2]);
+
+    /* masa — oyuna girerken aşağıdan yükselir */
+    this.table.group.position.y = (pb - 1) * 1.5;
+    this.table.update(dt, t, this.colA, this.colB, pb > 0.02, this.cyberCur);
 
     this.renderer.render(this.scene, this.camera);
   };
@@ -583,7 +661,7 @@ export class PlayWorld {
         void main(){
           vUv = uv;
           vec3 p = position;
-          p.z -= pow(p.x * .04, 2.) * 6.;
+          p.z -= pow(p.x * .05, 2.) * 6.;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.);
         }`,
       fragmentShader: /* glsl */ `
@@ -612,21 +690,24 @@ export class PlayWorld {
           col *= .82 + .18 * uEnergy;
           vec2 q = vUv - .5;
           col *= 1. - smoothstep(.28, .75, length(q * vec2(1., 1.25))) * .75;
-          gl_FragColor = vec4(col, uOpacity);
+          // kenarlar karanlığa erir — perde değil, masanın arkasında açılan bir vizyon
+          float ex = smoothstep(0., .16, min(vUv.x, 1. - vUv.x));
+          float ey = smoothstep(0., .28, vUv.y) * smoothstep(0., .1, 1. - vUv.y);
+          gl_FragColor = vec4(col, uOpacity * ex * ey);
           ${OUT}
         }`,
     });
     this.art = new THREE.Mesh(new THREE.PlaneGeometry(1, 1, 48, 1), mat);
-    this.art.position.set(0, 0, -9);
+    this.art.position.set(0, 3.3, -12);
     this.art.renderOrder = -4;
     this.scene.add(this.art);
   }
 
+  /** vizyon perdesi: masanın arkasında, kadrajın üst yarısını kaplayan geniş ekran */
   private fitArt() {
     if (!this.art) return;
-    const dist = 8 - this.art.position.z;
-    const h = 2 * dist * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * 1.18;
-    const w = h * this.camera.aspect * 1.2;
+    const h = 15;
+    const w = h * Math.max(16 / 9, this.camera.aspect * 1.25);
     this.art.geometry.dispose();
     this.art.geometry = new THREE.PlaneGeometry(w, h, 48, 1);
     this.art.material.uniforms.uPlaneAsp.value = w / h;
